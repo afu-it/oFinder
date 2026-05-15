@@ -123,15 +123,17 @@
         _progressBar.indeterminate = NO;
         [_progressBar stopAnimation:nil];
     }
-    _progressBar.doubleValue = progress;
+    // Progress only moves forward — rsync can re-baseline between files,
+    // which would otherwise make the bar visibly jump backwards.
+    if (progress > _progressBar.doubleValue) _progressBar.doubleValue = progress;
 
-    // Speed string
+    NSString *pctStr   = [NSString stringWithFormat:@"%d%%", (int)(_progressBar.doubleValue * 100)];
+    NSString *sizeStr  = [self formattedSize:bytesDone];
     NSString *speedStr = [self formattedSpeed:bytesPerSec];
     NSString *etaStr   = eta > 0 ? [self formattedETA:eta] : @"—";
-    NSString *sizeStr  = total > 0
-        ? [NSString stringWithFormat:@"%@ / %@", [self formattedSize:bytesDone], [self formattedSize:total]]
-        : [self formattedSize:bytesDone];
-    _speedLabel.stringValue = [NSString stringWithFormat:@"%@   %@   ETA: %@", sizeStr, speedStr, etaStr];
+    _speedLabel.stringValue = [NSString stringWithFormat:@"%@  •  %@  •  %@  •  ETA %@",
+                               pctStr, sizeStr, speedStr, etaStr];
+    (void)total;
 }
 
 - (void)finishWithSuccess:(BOOL)success errorMessage:(NSString *)msg {

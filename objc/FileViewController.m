@@ -144,6 +144,12 @@ typedef NS_ENUM(NSInteger, ClipboardOperation) {
     ClipboardOperationCut,
 };
 
+// Clipboard is shared across all windows so a copy/cut in one window can be
+// pasted in another. Mutated only on the main thread (menu/keyboard actions).
+static NSArray<NSString *> *s_clipboardPaths = nil;
+static ClipboardOperation   s_clipboardOp    = ClipboardOperationNone;
+static NSString *const ClipboardChangedNotification = @"R2FinderClipboardChanged";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FileViewController
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,8 +176,6 @@ typedef NS_ENUM(NSInteger, ClipboardOperation) {
 @property (nonatomic, strong) NSMutableArray<NSString *> *columnPaths;    // path for each column
 @property (nonatomic, strong) NSMutableArray<FileEntry *> *entries;
 @property (nonatomic, copy)   NSString                 *currentPath;   // also satisfies the readonly public decl
-@property (nonatomic, strong) NSArray<NSString *>      *clipboardPaths;
-@property (nonatomic)         ClipboardOperation         clipboardOp;
 @property (nonatomic)         NSInteger                  renameRow;
 @property (nonatomic)         FSEventStreamRef           fsEventStream;
 @property (nonatomic, strong) NSProgressIndicator       *loadingSpinner;
@@ -248,6 +252,7 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
         dispatch_source_cancel(_reloadDebounce);
         _reloadDebounce = nil;
     }
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -260,13 +265,20 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
     _entries       = [NSMutableArray array];
     _columnEntries = [NSMutableArray array];
     _columnPaths   = [NSMutableArray array];
-    _clipboardOp   = ClipboardOperationNone;
     _renameRow     = -1;
     _viewMode      = FileViewModeList;
     _currentPath   = [path copy];
     _loadQueue     = dispatch_queue_create("com.r2finder.dirload", DISPATCH_QUEUE_SERIAL);
     _loadGeneration = 0;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(clipboardDidChange:)
+                                                 name:ClipboardChangedNotification
+                                               object:nil];
     return self;
+}
+
+- (void)clipboardDidChange:(NSNotification *)note {
+    [self reloadAllViews];
 }
 
 - (void)loadView {
@@ -501,22 +513,53 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
             zig_free_dir_listing(listing);
         }
 
+        // Assign cheap placeholder icons synchronously (no I/O) so the UI can
+        // render immediately. Real per-file icons are fetched off-main below.
+        NSImage *folderPlaceholder = [NSImage imageNamed:NSImageNameFolder];
+        NSImage *filePlaceholder   = [NSImage imageNamed:NSImageNameMultipleDocuments];
+        folderPlaceholder.size = NSMakeSize(16, 16);
+        filePlaceholder.size   = NSMakeSize(16, 16);
+        for (FileEntry *fe in newEntries) {
+            fe.icon = fe.isDir ? folderPlaceholder : filePlaceholder;
+        }
+
         dispatch_async(dispatch_get_main_queue(), ^{
             if (self->_loadGeneration != thisGeneration) return;
 
             self->_isLoading = NO;
             [self->_loadingSpinner stopAnimation:nil];
 
-            NSWorkspace *ws = [NSWorkspace sharedWorkspace];
-            for (FileEntry *fe in newEntries) {
-                fe.icon = [ws iconForFile:fe.path];
-                fe.icon.size = NSMakeSize(16, 16);
-            }
-
             [self->_entries removeAllObjects];
             [self->_entries addObjectsFromArray:newEntries];
             [self reloadAllViews];
             [self updateStatusBar];
+
+            // Fill real icons in the background. iconForFile: can do synchronous
+            // metadata I/O — on Samba shares this blocks the main thread for
+            // hundreds of round-trips. Capture pathCopy implicitly via newEntries
+            // and rebind to view rows on completion.
+            [self fillIconsForEntries:newEntries generation:thisGeneration];
+        });
+    });
+}
+
+- (void)fillIconsForEntries:(NSArray<FileEntry *> *)entries
+                 generation:(NSUInteger)generation {
+    dispatch_queue_t bgq = dispatch_get_global_queue(QOS_CLASS_UTILITY, 0);
+    dispatch_async(bgq, ^{
+        NSWorkspace *ws = [NSWorkspace sharedWorkspace];
+        for (FileEntry *fe in entries) {
+            if (self->_loadGeneration != generation) return;
+            NSImage *img = [ws iconForFile:fe.path];
+            img.size = NSMakeSize(16, 16);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (self->_loadGeneration != generation) return;
+                fe.icon = img;
+            });
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self->_loadGeneration != generation) return;
+            [self reloadAllViews];
         });
     });
 }
@@ -668,8 +711,8 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
         }
         cell.textField.stringValue = entry.name;
         cell.imageView.image       = entry.icon;
-        cell.alphaValue = (_clipboardOp == ClipboardOperationCut &&
-                           [_clipboardPaths containsObject:entry.path]) ? 0.35 : 1.0;
+        cell.alphaValue = (s_clipboardOp == ClipboardOperationCut &&
+                           [s_clipboardPaths containsObject:entry.path]) ? 0.35 : 1.0;
         return cell;
     }
 
@@ -716,8 +759,8 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
         NSImage *icon = [entry.icon copy];
         icon.size = NSMakeSize(64, 64);
         item.imageView.image = icon;
-        item.view.alphaValue = (_clipboardOp == ClipboardOperationCut &&
-                                [_clipboardPaths containsObject:entry.path]) ? 0.35 : 1.0;
+        item.view.alphaValue = (s_clipboardOp == ClipboardOperationCut &&
+                                [s_clipboardPaths containsObject:entry.path]) ? 0.35 : 1.0;
     }
     return item;
 }
@@ -1026,7 +1069,7 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
 // Returns the internal clipboard if set, otherwise falls back to file URLs on
 // the system pasteboard (e.g. files copied from Finder or another app).
 - (NSArray<NSString *> *)effectiveClipboardPaths {
-    if (_clipboardPaths.count) return _clipboardPaths;
+    if (s_clipboardPaths.count) return s_clipboardPaths;
     NSArray<NSURL *> *urls = [[NSPasteboard generalPasteboard]
         readObjectsForClasses:@[[NSURL class]]
         options:@{ NSPasteboardURLReadingFileURLsOnlyKey: @YES }];
@@ -1082,27 +1125,35 @@ static void fsEventsCallback(ConstFSEventStreamRef streamRef,
 }
 
 - (IBAction)copySelected:(id)sender {
-    _clipboardPaths = [self selectedPaths];
-    _clipboardOp    = ClipboardOperationCopy;
-    [self reloadAllViews];
+    [FileViewController setClipboardPaths:[self selectedPaths] operation:ClipboardOperationCopy];
 }
 
 - (IBAction)cutSelected:(id)sender {
-    _clipboardPaths = [self selectedPaths];
-    _clipboardOp    = ClipboardOperationCut;
-    [self reloadAllViews];
+    [FileViewController setClipboardPaths:[self selectedPaths] operation:ClipboardOperationCut];
 }
 
 - (IBAction)pasteHere:(id)sender {
     NSArray<NSString *> *paths = [self effectiveClipboardPaths];
     if (!paths.count) return;
-    BOOL isMove = (_clipboardPaths.count > 0) && (_clipboardOp == ClipboardOperationCut);
+    BOOL isMove = (s_clipboardPaths.count > 0) && (s_clipboardOp == ClipboardOperationCut);
     [self performTransferFromPaths:paths toDir:_currentPath isMove:isMove];
     if (isMove) {
-        _clipboardPaths = nil;
-        _clipboardOp    = ClipboardOperationNone;
-        [self reloadAllViews];
+        [FileViewController setClipboardPaths:nil operation:ClipboardOperationNone];
     }
+}
+
++ (void)setClipboardPaths:(NSArray<NSString *> *)paths operation:(ClipboardOperation)op {
+    s_clipboardPaths = [paths copy];
+    s_clipboardOp    = op;
+    // Mirror to system pasteboard for copy so external apps (incl. Finder) can paste.
+    if (op == ClipboardOperationCopy && paths.count) {
+        NSMutableArray<NSURL *> *urls = [NSMutableArray arrayWithCapacity:paths.count];
+        for (NSString *p in paths) [urls addObject:[NSURL fileURLWithPath:p]];
+        NSPasteboard *pb = [NSPasteboard generalPasteboard];
+        [pb clearContents];
+        [pb writeObjects:urls];
+    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:ClipboardChangedNotification object:nil];
 }
 
 - (void)performTransferFromPaths:(NSArray<NSString *> *)paths
@@ -1438,9 +1489,7 @@ static void doneCb(void *ctx, bool success, const char *errMsg) {
     NSArray<NSString *> *paths = [self effectiveClipboardPaths];
     if (!paths.count) return;
     [self performTransferFromPaths:paths toDir:_currentPath isMove:YES];
-    _clipboardPaths = nil;
-    _clipboardOp    = ClipboardOperationNone;
-    [self reloadAllViews];
+    [FileViewController setClipboardPaths:nil operation:ClipboardOperationNone];
 }
 
 - (IBAction)compressSelected:(id)sender {

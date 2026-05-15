@@ -247,41 +247,25 @@ fn runTransfer(job: *TransferJob) !void {
                         if (info.progress >= 0) {
                             if (info.progress >= 1.0 and !sent_complete) {
                                 sent_complete = true;
-                                // Report the final 100% progress
-                                const total_bytes: u64 = if (info.progress > 0)
-                                    @intFromFloat(@as(f64, @floatFromInt(info.bytes)) / info.progress)
-                                else
-                                    0;
-                                job.on_progress(
-                                    job.ctx,
-                                    info.progress,
-                                    info.bytes,
-                                    total_bytes,
-                                    info.speed,
-                                    0,
-                                );
+                                // Report the final 100% progress. rsync's
+                                // --info=progress2 doesn't emit a stable total
+                                // byte count per line, so pass 0 and let the UI
+                                // display just bytesDone + speed.
+                                job.on_progress(job.ctx, info.progress, info.bytes, 0, info.speed, 0);
                                 // Spawn timer thread to signal sync phase after 500ms
                                 sync_thread = std.Thread.spawn(.{}, SyncSignalCtx.run, .{&sync_signal_ctx}) catch null;
                             } else if (!sent_complete) {
-                                // Normal progress (< 100%)
+                                // Normal progress (< 100%). ETA comes from
+                                // rsync directly via speed and remaining
+                                // percentage; total bytes is left at 0 since
+                                // any estimate from bytes/progress jitters.
                                 var eta: i64 = 0;
                                 if (info.speed > 0 and info.progress > 0 and info.progress < 1.0) {
                                     const total_est = @as(f64, @floatFromInt(info.bytes)) / info.progress;
                                     const remaining = total_est - @as(f64, @floatFromInt(info.bytes));
                                     eta = @intFromFloat(remaining / info.speed);
                                 }
-                                const total_bytes: u64 = if (info.progress > 0)
-                                    @intFromFloat(@as(f64, @floatFromInt(info.bytes)) / info.progress)
-                                else
-                                    0;
-                                job.on_progress(
-                                    job.ctx,
-                                    info.progress,
-                                    info.bytes,
-                                    total_bytes,
-                                    info.speed,
-                                    eta,
-                                );
+                                job.on_progress(job.ctx, info.progress, info.bytes, 0, info.speed, eta);
                             }
                             // After sent_complete, ignore further lines (timer handles sync UI)
                         }
