@@ -57,27 +57,33 @@ Because rsync speaks the remote filesystem's language and skips the extended-att
 
 ## Building
 
-Requires **Zig 0.15** and macOS 13+.
+Requires **Swift 6.0+** (Xcode command-line tools) and macOS 13+. The package
+builds in Swift 6 language mode (strict concurrency).
 
 ```bash
-# Build and run directly
-zig build run
+# Build and run directly (debug; uses the repo's bin/rsync and bin/7zz)
+swift run
 
-# Create R2 Finder.app in zig-out/
-zig build bundle
+# Build
+swift build -c release
 
-# Run filesystem unit tests (no UI dependencies)
-zig build test-fs
+# Create R2 Finder.app in .build/ and open it
+Scripts/bundle.sh
+open ".build/R2 Finder.app"
+
+# Run unit tests (services: listing, transfers, archives, parsers)
+swift test
 ```
 
-The `.app` bundle is self-contained — copy `zig-out/R2 Finder.app` anywhere to install.
+The `.app` bundle is self-contained — copy `.build/R2 Finder.app` anywhere to install.
 
 ## Architecture
 
-| Layer | Language | Responsibility |
-|-------|----------|----------------|
-| `src/fs_ops.zig` | Zig | Filesystem operations: list, copy/move (rsync), delete (Trash), create directory, rename, volumes, special dirs |
-| `include/bridge.h` | C | ABI boundary between Zig and Objective-C |
-| `objc/` | Objective-C / Cocoa | All UI: windows, toolbar, sidebar, file table, progress, Quick Look |
+The app is 100 % Swift (migrated from Zig + Objective-C — see `SWIFT_MIGRATION.md`).
 
-Copy and move operations run on a background thread spawned by Zig. Progress callbacks are dispatched back to the main queue so the UI stays responsive during large transfers.
+| Layer | Responsibility |
+|-------|----------------|
+| `Sources/R2FinderServices/` | Filesystem services: list, copy/move (rsync), delete, create directory, rename, volumes, 7z archives |
+| `Sources/R2Finder/` | The app: entry point + AppKit UI (windows, toolbar, sidebar, file views, progress, Quick Look) |
+
+Copy and move operations run on background threads inside the service layer; the UI dispatches progress callbacks onto the main queue so it stays responsive during large transfers.

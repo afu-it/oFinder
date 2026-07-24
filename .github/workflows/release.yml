@@ -19,20 +19,17 @@ jobs:
           # Use a PAT or the default token – push to main requires write access.
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Zig
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.16.0
-
       # ── Build ──────────────────────────────────────────────────────────────
-      - name: Build app bundle (ReleaseFast)
-        run: zig build bundle -Doptimize=ReleaseFast -Dversion=${{ github.ref_name }}
+      - name: Build app bundle (release)
+        run: |
+          swift build -c release
+          Scripts/bundle.sh "${{ github.ref_name }}"
 
       # ── Package as DMG ─────────────────────────────────────────────────────
       - name: Create DMG
         run: |
           mkdir dmg_staging
-          cp -r "zig-out/R2 Finder.app" dmg_staging/
+          cp -r ".build/R2 Finder.app" dmg_staging/
           # Symlink so the user can drag straight to Applications
           ln -s /Applications dmg_staging/Applications
 
