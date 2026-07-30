@@ -352,7 +352,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             menu.addItem(.separator())
             // Compress / Uncompress
             let ext = (entry.path as NSString).pathExtension.lowercased()
-            if Self.archiveExtensions.contains(ext) {
+            if !entry.isDir, Self.extractableExtensions.contains(ext) {
                 add("Descomprimir", #selector(uncompressSelected(_:)))
             } else {
                 add("Comprimir", #selector(compressSelected(_:)))

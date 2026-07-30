@@ -70,6 +70,37 @@ final class ArchiveServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: archive + ".002"))
     }
 
+    // Broadened-format support (the context menu now offers "Descomprimir"
+    // for everything 7zz can extract): a .tgz made by system tar extracts one
+    // layer per pass — the first pass yields the inner .tar.
+    func testUncompressTgzYieldsInnerTar() throws {
+        let srcFile = base + "/hello.txt"
+        try write("hello tgz\n", to: srcFile)
+
+        let tgz = base + "/bundle.tgz"
+        let tar = Process()
+        tar.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        tar.arguments = ["-czf", tgz, "-C", base, "hello.txt"]
+        try tar.run()
+        tar.waitUntilExit()
+        XCTAssertEqual(tar.terminationStatus, 0)
+
+        let outDir = base + "/out"
+        let done = Completion()
+        ArchiveService.uncompress(sevenzzPath: sevenzzPath, archivePath: tgz,
+                                  dstDir: outDir,
+                                  onProgress: { _, _, _, _, _ in },
+                                  onDone: done.handler)
+        XCTAssertTrue(done.wait())
+        XCTAssertTrue(done.success, done.message ?? "")
+
+        // gzip layer removed → inner tar ("bundle" per 7zz naming)
+        let contents = try FileManager.default.contentsOfDirectory(atPath: outDir)
+        XCTAssertEqual(contents.count, 1)
+        XCTAssertTrue(contents[0] == "bundle" || contents[0].hasSuffix(".tar"),
+                      "unexpected extraction result: \(contents)")
+    }
+
     func testFailedUncompressReportsError() {
         let done = Completion()
         ArchiveService.uncompress(sevenzzPath: sevenzzPath,

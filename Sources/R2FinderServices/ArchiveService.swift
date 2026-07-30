@@ -6,9 +6,12 @@
 // reason: avoiding I/O contention). Callbacks fire on background threads;
 // the UI layer dispatches to main.
 //
-// Progress comes from two sources, interleaved exactly like before:
+// Progress:
 //   • 7zz -bsp1 stdout percent lines            → (pct, 0, 0, 0, 0)
-//   • a 300 ms output-file-size poll            → (min(0.99, out/in), out, in, 0, 0)
+//   • compression only: a 300 ms output-size poll → (min(0.99, out/in), out, in, 0, 0)
+// Extraction relies on the -bsp1 lines alone — polling the *source* archive
+// against its own size (the old behavior, inherited from archive.zig) pinned
+// the bar at 99 % from the first tick.
 
 import Foundation
 
@@ -32,8 +35,9 @@ public enum ArchiveService {
             args.append(contentsOf: sources)
 
             let totalInput = sources.reduce(UInt64(0)) { $0 + pathSize($1) }
-            run(sevenzzPath: sevenzzPath, arguments: args, archivePath: archivePath,
-                totalInput: totalInput, isSplit: volumeSizeMB > 0,
+            run(sevenzzPath: sevenzzPath, arguments: args,
+                sizeMonitor: (archivePath: archivePath, totalInput: totalInput,
+                              isSplit: volumeSizeMB > 0),
                 onProgress: onProgress, onDone: onDone)
         }
     }
@@ -44,33 +48,37 @@ public enum ArchiveService {
                                   onDone: @escaping CompletionHandler) {
         queue.async {
             let args = ["x", "-y", "-bsp1", "-o\(dstDir)", archivePath]
-            // For uncompress, the archive size is the progress denominator.
-            let totalInput = statSize(archivePath)
-            run(sevenzzPath: sevenzzPath, arguments: args, archivePath: archivePath,
-                totalInput: totalInput, isSplit: false,
+            // No size monitor: 7zz's -bsp1 percent lines are the real
+            // extraction progress.
+            run(sevenzzPath: sevenzzPath, arguments: args, sizeMonitor: nil,
                 onProgress: onProgress, onDone: onDone)
         }
     }
 
     private static func run(sevenzzPath: String, arguments: [String],
-                            archivePath: String, totalInput: UInt64, isSplit: Bool,
+                            sizeMonitor: (archivePath: String, totalInput: UInt64, isSplit: Bool)?,
                             onProgress: @escaping ProgressHandler,
                             onDone: CompletionHandler) {
         let child = Subprocess(executablePath: sevenzzPath, arguments: arguments)
 
-        // File-size monitor: poll the output size every 300 ms and report
-        // byte-level progress alongside 7zz's own percent lines.
-        let monitor = DispatchSource.makeTimerSource(queue: .global())
-        monitor.schedule(deadline: .now() + .milliseconds(300), repeating: .milliseconds(300))
-        monitor.setEventHandler {
-            let outputSize = outputSize(archivePath: archivePath, isSplit: isSplit)
-            if totalInput > 0, outputSize > 0 {
-                let progress = min(0.99, Double(outputSize) / Double(totalInput))
-                onProgress(progress, outputSize, totalInput, 0, 0)
+        // Compression: poll the growing output archive every 300 ms and
+        // report byte-level progress alongside 7zz's own percent lines.
+        var monitor: DispatchSourceTimer?
+        if let sizeMonitor, sizeMonitor.totalInput > 0 {
+            let timer = DispatchSource.makeTimerSource(queue: .global())
+            timer.schedule(deadline: .now() + .milliseconds(300), repeating: .milliseconds(300))
+            timer.setEventHandler {
+                let outputSize = outputSize(archivePath: sizeMonitor.archivePath,
+                                            isSplit: sizeMonitor.isSplit)
+                if outputSize > 0 {
+                    let progress = min(0.99, Double(outputSize) / Double(sizeMonitor.totalInput))
+                    onProgress(progress, outputSize, sizeMonitor.totalInput, 0, 0)
+                }
             }
+            timer.resume()
+            monitor = timer
         }
-        monitor.resume()
-        defer { monitor.cancel() }
+        defer { monitor?.cancel() }
 
         let spawnError = child.run { line in
             if let pct = SevenZipProgressParser.parsePercent(line: line) {

@@ -361,6 +361,20 @@ final class FileViewController: NSViewController {
                 self.isLoading = false
                 self.loadingSpinner.stopAnimation(nil)
 
+                // On an in-place refresh (FSEvents during a transfer or
+                // extraction), carry over the already-loaded icons by path —
+                // otherwise every reload flashes placeholder icons until the
+                // background fill-in catches up ("blinking").
+                var oldIcons: [String: NSImage] = [:]
+                for e in self.entries where e.icon != nil {
+                    oldIcons[e.path] = e.icon
+                }
+                if !oldIcons.isEmpty {
+                    for fe in newEntries {
+                        if let icon = oldIcons[fe.path] { fe.icon = icon }
+                    }
+                }
+
                 self.entries = newEntries
                 self.reloadAllViews()
                 self.updateStatusBar()
@@ -745,8 +759,24 @@ final class FileViewController: NSViewController {
     // MARK: – Archive actions
     // ─────────────────────────────────────────────────────────────────────────
 
-    static let archiveExtensions: Set<String> = ["7z", "zip", "rar", "tar",
-                                                 "gz", "bz2", "xz"]
+    /// Extensions the bundled 7zz can extract (from `7zz i`, filtered to
+    /// archive-like formats a user would actually right-click — executables,
+    /// disk images the OS mounts, and zip-based document formats like .docx
+    /// are deliberately excluded). Drives "Descomprimir" in the context menu.
+    /// "001" covers the split volumes this app itself creates.
+    static let extractableExtensions: Set<String> = [
+        "7z", "zip", "zipx", "rar", "r00", "tar", "tgz", "tbz", "tbz2",
+        "txz", "taz", "gz", "gzip", "bz2", "bzip2", "xz", "lzma", "z",
+        "lzh", "lha", "arj", "cab", "iso", "cpio", "rpm", "deb", "wim",
+        "xar", "pkg", "001",
+    ]
+
+    /// Formats that are already compressed — splitting these uses -mx0
+    /// (store only) since re-compressing buys nothing.
+    static let compressedExtensions: Set<String> = [
+        "7z", "zip", "zipx", "rar", "tar", "tgz", "tbz", "tbz2", "txz",
+        "gz", "gzip", "bz2", "bzip2", "xz", "lzma", "z",
+    ]
 
     @IBAction func compressSelected(_ sender: Any?) {
         let paths = selectedPaths()
@@ -800,9 +830,8 @@ final class FileViewController: NSViewController {
             }
 
             // Detect if all selected files are already compressed archives
-            let splitExts = Self.archiveExtensions.union(["tgz", "tbz2", "txz"])
             let storeOnly = paths.allSatisfy {
-                splitExts.contains(($0 as NSString).pathExtension.lowercased())
+                Self.compressedExtensions.contains(($0 as NSString).pathExtension.lowercased())
             }
 
             let baseName = ((paths[0] as NSString).lastPathComponent as NSString).deletingPathExtension
@@ -820,21 +849,27 @@ final class FileViewController: NSViewController {
     }
 
     @IBAction func uncompressSelected(_ sender: Any?) {
-        let row = outlineView.selectedRow
-        guard row >= 0, let entry = outlineView.item(atRow: row) as? FileEntry else { return }
+        // Selection-based (not outlineView rows) so it works from the icon
+        // and column views too.
+        guard let archivePath = selectedPaths().first else { return }
 
         guard let sevenzz = Self.sevenzzPath else {
             showErrorMessage("No se encontró el binario 7zz")
             return
         }
 
-        // Extract to a folder with the archive's base name
-        let dstDir = (currentPath as NSString)
-            .appendingPathComponent((entry.name as NSString).deletingPathExtension)
+        // Extract to a folder with the archive's base name; split volumes
+        // (x.7z.001) shed both extensions.
+        var baseName = ((archivePath as NSString).lastPathComponent as NSString)
+            .deletingPathExtension
+        if (archivePath as NSString).pathExtension == "001" {
+            baseName = (baseName as NSString).deletingPathExtension
+        }
+        let dstDir = (currentPath as NSString).appendingPathComponent(baseName)
 
         let pwc = makeProgressWindow(title: "Descomprimiendo", destination: currentPath)
         let (onProgress, onDone) = progressHandlers(pwc)
-        ArchiveService.uncompress(sevenzzPath: sevenzz, archivePath: entry.path, dstDir: dstDir,
+        ArchiveService.uncompress(sevenzzPath: sevenzz, archivePath: archivePath, dstDir: dstDir,
                                   onProgress: onProgress, onDone: onDone)
     }
 
@@ -848,14 +883,19 @@ final class FileViewController: NSViewController {
             let bundled = (resources as NSString).appendingPathComponent(name)
             if fm.isExecutableFile(atPath: bundled) { return bundled }
         }
-        // Fallback: check bin/<name> relative to executable (for swift run
-        // during development). The executable is at
-        // <project>/.build/<config>/rs_2finder → go up 2 levels to project root.
+        // Development fallback (swift run / bare .build binaries): walk up
+        // from the executable looking for the repo's bin/<name>. The binary
+        // sits at .build/<config>/ or .build/<triple>/<config>/ depending on
+        // how it was launched, so a fixed ../.. is not reliable.
         if let exePath = Bundle.main.executablePath {
-            let exeDir = (exePath as NSString).deletingLastPathComponent
-            let dev = ((exeDir as NSString).appendingPathComponent("../../bin/\(name)") as NSString)
-                .standardizingPath
-            if fm.isExecutableFile(atPath: dev) { return dev }
+            var dir = URL(fileURLWithPath: exePath)
+                .resolvingSymlinksInPath()
+                .deletingLastPathComponent()
+            for _ in 0..<6 {
+                let candidate = dir.appendingPathComponent("bin/\(name)").path
+                if fm.isExecutableFile(atPath: candidate) { return candidate }
+                dir.deleteLastPathComponent()
+            }
         }
         return nil
     }
