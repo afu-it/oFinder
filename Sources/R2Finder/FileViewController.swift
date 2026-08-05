@@ -8,6 +8,7 @@ import AppKit
 import CoreServices
 import Quartz
 import R2FinderServices
+import UniformTypeIdentifiers
 
 enum FileViewMode: Int {
     case icon = 0
@@ -61,6 +62,26 @@ final class FileViewController: NSViewController {
     // Model
     var entries: [FileEntry] = []
     var renameRow = -1
+
+    // Outline expansion/selection, tracked live as the user drives them rather
+    // than read back from the outline at reload time. A reload always follows a
+    // change to `entries`, and querying rows in that window makes AppKit
+    // materialize stale rows through the data source (itemAtRow: →
+    // outlineView(_:child:ofItem:)) with indices the new model no longer has.
+    var expandedOutlinePaths: Set<String> = []
+    var selectedOutlinePaths: Set<String> = []
+    // Set while reloadOutlinePreservingState() re-applies the snapshot, so the
+    // expand/collapse/selection callbacks it triggers don't overwrite it.
+    var isRestoringOutlineState = false
+    // Folders whose children are being listed off-main, by path, so repeated
+    // data-source queries during an expansion enqueue the listing only once.
+    // It doubles as backpressure: while a folder's refresh is in flight, the
+    // next FSEvents tick won't queue another listing of it behind the first.
+    private var childrenLoading: Set<String> = []
+    // The `showHidden` setting the on-screen entries were listed with. A
+    // mismatch means carried-over subtrees were filtered differently and can't
+    // be reused.
+    private var loadedShowHidden = FileViewController.showHidden
 
     // Loading
     private let loadQueue = DispatchQueue(label: "com.r2finder.dirload")
@@ -329,6 +350,10 @@ final class FileViewController: NSViewController {
         // screen so the UI doesn't flicker through "Cargando…" every time
         // rsync deletes a file.
         if pathChanged {
+            // The old directory's expansion/selection means nothing here, and
+            // keeping it would re-expand same-named folders in the new one.
+            expandedOutlinePaths.removeAll()
+            selectedOutlinePaths.removeAll()
             entries.removeAll()
             reloadAllViews()
             isLoading = true
@@ -375,9 +400,34 @@ final class FileViewController: NSViewController {
                     }
                 }
 
+                // Likewise carry over expanded subtrees. Children now load
+                // asynchronously, so without this an expanded folder would empty
+                // out on every FSEvents refresh and repopulate a beat later.
+                // Only expanded ones: a collapsed folder can re-list on demand.
+                var oldChildren: [String: [FileEntry]] = [:]
+                if showHidden == self.loadedShowHidden {
+                    for e in self.entries
+                    where e.childrenLoaded && self.expandedOutlinePaths.contains(e.path) {
+                        oldChildren[e.path] = e.children
+                    }
+                }
+                for fe in newEntries {
+                    if let kids = oldChildren[fe.path] {
+                        fe.children = kids
+                        fe.childrenLoaded = true
+                    }
+                }
+
                 self.entries = newEntries
+                self.loadedShowHidden = showHidden
                 self.reloadAllViews()
                 self.updateStatusBar()
+
+                // The carried-over subtrees are the *previous* listing; refresh
+                // them off-main so an expanded folder tracks the transfer too.
+                for fe in newEntries where oldChildren[fe.path] != nil {
+                    self.loadChildren(for: fe, force: true)
+                }
 
                 // Fill real icons in the background. icon(forFile:) can do
                 // synchronous metadata I/O — on Samba shares this blocks the
@@ -434,21 +484,20 @@ final class FileViewController: NSViewController {
     /// FileEntry objects (and fire asynchronously — FSEvents, icon fill-in,
     /// clipboard changes), so a plain reloadData() would collapse every
     /// expanded folder and drop the selection mid-interaction. Expansion and
-    /// selection are snapshotted and restored by path.
+    /// selection are restored by path from the snapshot kept in
+    /// `expandedOutlinePaths`/`selectedOutlinePaths`; the outline itself is only
+    /// queried *after* reloadData(), when its rows match `entries` again.
     private func reloadOutlinePreservingState() {
-        var expandedPaths: [String] = []
-        var selectedPathSet = Set<String>()
-        for row in 0..<outlineView.numberOfRows {
-            guard let e = outlineView.item(atRow: row) as? FileEntry else { continue }
-            if outlineView.isItemExpanded(e) { expandedPaths.append(e.path) }
-            if outlineView.selectedRowIndexes.contains(row) { selectedPathSet.insert(e.path) }
-        }
+        let expanded = expandedOutlinePaths
+
+        isRestoringOutlineState = true
+        defer { isRestoringOutlineState = false }
 
         outlineView.reloadData()
-        guard !expandedPaths.isEmpty || !selectedPathSet.isEmpty else { return }
+        guard !expanded.isEmpty || !selectedOutlinePaths.isEmpty else { return }
 
         // Re-expand parents before children so nested rows materialize.
-        for path in expandedPaths.sorted(by: { $0.count < $1.count }) {
+        for path in expanded.sorted(by: { $0.count < $1.count }) {
             for row in 0..<outlineView.numberOfRows {
                 if let e = outlineView.item(atRow: row) as? FileEntry, e.path == path {
                     outlineView.expandItem(e)
@@ -457,10 +506,18 @@ final class FileViewController: NSViewController {
             }
         }
 
+        restoreOutlineSelection()
+    }
+
+    /// Re-select the rows whose paths are in `selectedOutlinePaths`. Every
+    /// reload rebuilds the FileEntry objects, so selection only survives by path.
+    /// Only safe once the outline's rows agree with `entries` again.
+    private func restoreOutlineSelection() {
+        guard !selectedOutlinePaths.isEmpty else { return }
         var indexes = IndexSet()
         for row in 0..<outlineView.numberOfRows {
             if let e = outlineView.item(atRow: row) as? FileEntry,
-               selectedPathSet.contains(e.path) {
+               selectedOutlinePaths.contains(e.path) {
                 indexes.insert(row)
             }
         }
@@ -480,16 +537,94 @@ final class FileViewController: NSViewController {
             + "\(files) archivo\(files == 1 ? "" : "s")"
     }
 
-    /// Synchronous children loading for outline-view expansion.
-    func loadChildren(for entry: FileEntry) {
-        guard !entry.childrenLoaded else { return }
-        entry.childrenLoaded = true
-        entry.children = Self.entriesList(forPath: entry.path, showHidden: Self.showHidden)
-        let ws = NSWorkspace.shared
-        for fe in entry.children {
-            let icon = ws.icon(forFile: fe.path)
-            icon.size = NSSize(width: 16, height: 16)
-            fe.icon = icon
+    /// Column-view listing, off-main. Icons are fetched on the same background
+    /// pass rather than filled in later: a column's rows are all visible at
+    /// once, and reloadAllViews() — which the icon fill-in ends with — would
+    /// rebuild the columns and throw away the user's place in them.
+    func loadColumnEntries(forPath path: String,
+                           completion: @escaping @MainActor ([FileEntry]) -> Void) {
+        let showHidden = Self.showHidden
+        loadQueue.async {
+            let result = Self.entriesList(forPath: path, showHidden: showHidden)
+            let ws = NSWorkspace.shared
+            for fe in result {
+                let icon = ws.icon(forFile: fe.path)
+                icon.size = NSSize(width: 16, height: 16)
+                fe.icon = icon
+            }
+            let sorted = result.sorted { a, b in
+                if a.isDir != b.isDir { return a.isDir }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+            Task { @MainActor in completion(sorted) }
+        }
+    }
+
+    /// Load an expanded folder's children off the main thread.
+    ///
+    /// Both halves of this used to run inline in
+    /// `outlineView(_:numberOfChildrenOfItem:)`: the directory listing and one
+    /// `NSWorkspace.icon(forFile:)` per child, each a synchronous round-trip.
+    /// On an SMB share that froze the UI for the whole expansion. The data
+    /// source now reports zero children until the listing lands, then the item
+    /// is reloaded (and re-expanded, since expanding an empty folder leaves the
+    /// outline with nothing to show).
+    ///
+    /// `force` re-lists a folder whose children are already loaded — used when
+    /// an in-place refresh carries an expanded subtree over to fresh entries.
+    func loadChildren(for entry: FileEntry, force: Bool = false) {
+        guard force || !entry.childrenLoaded else { return }
+        guard !childrenLoading.contains(entry.path) else { return }
+        childrenLoading.insert(entry.path)
+
+        let path = entry.path
+        let showHidden = Self.showHidden
+        let generation = loadGeneration
+
+        loadQueue.async { [weak self] in
+            let children = Self.entriesList(forPath: path, showHidden: showHidden)
+
+            // Cheap placeholders (no I/O); fillIcons replaces them off-main.
+            let folderPlaceholder = NSImage(named: NSImage.folderName)
+            let filePlaceholder = NSImage(named: NSImage.multipleDocumentsName)
+            folderPlaceholder?.size = NSSize(width: 16, height: 16)
+            filePlaceholder?.size = NSSize(width: 16, height: 16)
+            for fe in children {
+                fe.icon = fe.isDir ? folderPlaceholder : filePlaceholder
+            }
+
+            Task { @MainActor in
+                guard let self else { return }
+                self.childrenLoading.remove(path)
+                // A newer load replaced the whole tree — `entry` is orphaned.
+                guard self.loadGeneration == generation else { return }
+
+                // Keep icons already fetched for this subtree (in-place refresh).
+                var oldIcons: [String: NSImage] = [:]
+                for e in entry.children where e.icon != nil { oldIcons[e.path] = e.icon }
+                for fe in children where oldIcons[fe.path] != nil { fe.icon = oldIcons[fe.path] }
+
+                entry.children = children
+                entry.childrenLoaded = true
+
+                // Guarded: reloading the subtree drops any selection inside it,
+                // which would otherwise erase those paths from the snapshot
+                // before restoreOutlineSelection() can put the rows back.
+                self.isRestoringOutlineState = true
+                self.outlineView.reloadItem(entry, reloadChildren: true)
+                // The outline may already consider the folder expanded (the user
+                // clicked its triangle while it still reported zero children), or
+                // it may be a subtree we're restoring after a refresh.
+                if self.outlineView.isItemExpanded(entry)
+                    || self.expandedOutlinePaths.contains(path) {
+                    self.expandedOutlinePaths.insert(path)
+                    self.outlineView.expandItem(entry)
+                }
+                self.restoreOutlineSelection()
+                self.isRestoringOutlineState = false
+
+                self.fillIcons(for: children, generation: generation)
+            }
         }
     }
 
@@ -934,13 +1069,30 @@ final class FileViewController: NSViewController {
         return df.string(from: Date(timeIntervalSince1970: TimeInterval(unix)))
     }
 
+    /// Localized "Tipo" column text.
+    ///
+    /// Resolved from the filename extension, cached, because the previous
+    /// `resourceValues(forKeys: [.contentTypeKey])` hit the filesystem once per
+    /// visible row on every redraw — a per-row round-trip on a network volume.
+    /// Extensionless files still need the file itself to say what it is.
     func kind(forPath path: String) -> String {
-        let url = URL(fileURLWithPath: path)
-        if let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType,
+        let ext = (path as NSString).pathExtension
+        if !ext.isEmpty {
+            let key = ext.lowercased()
+            if let cached = Self.kindCache[key] { return cached }
+            if let description = UTType(filenameExtension: ext)?.localizedDescription {
+                Self.kindCache[key] = description
+                return description
+            }
+        }
+        if let type = try? URL(fileURLWithPath: path)
+            .resourceValues(forKeys: [.contentTypeKey]).contentType,
            let description = type.localizedDescription {
             return description
         }
-        let ext = (path as NSString).pathExtension.uppercased()
-        return ext.isEmpty ? "Archivo" : "Archivo \(ext)"
+        let upper = ext.uppercased()
+        return upper.isEmpty ? "Archivo" : "Archivo \(upper)"
     }
+
+    private static var kindCache: [String: String] = [:]
 }

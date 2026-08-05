@@ -8,8 +8,11 @@ import AppKit
 
 @MainActor
 protocol MillerColumnViewDelegate: AnyObject {
-    /// Provide the entries (with icons) for one column.
-    func columnView(_ v: MillerColumnView, entriesForPath path: String) -> [FileEntry]
+    /// Provide the entries (with icons) for one column. Listing a directory and
+    /// fetching its icons are both blocking I/O, so the entries come back
+    /// through `completion` — possibly after the column has been removed again.
+    func columnView(_ v: MillerColumnView, entriesForPath path: String,
+                    completion: @escaping @MainActor ([FileEntry]) -> Void)
     /// A directory row was selected: it becomes the current path.
     func columnView(_ v: MillerColumnView, didSelectDirectory path: String)
     /// A file row was selected: its *containing* directory becomes current.
@@ -60,6 +63,9 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
     static let columnWidth: CGFloat = 180
 
     private struct Column {
+        /// Identifies the column across an async entries load — indices shift as
+        /// deeper columns are trimmed, and the column may be gone by then.
+        let id: Int
         let path: String
         var entries: [FileEntry]
         let table: ColumnTableView
@@ -69,6 +75,7 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
     private let hScroll = NSScrollView()
     private let stack = NSStackView()
     private var columns: [Column] = []
+    private var nextColumnID = 0
     /// Index of the column the user last interacted with (feeds selectedPaths).
     private var activeColumnIndex = 0
     /// Guard so programmatic reloads don't re-enter the selection logic.
@@ -140,8 +147,6 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
     // ─────────────────────────────────────────────────────────────────────────
 
     private func appendColumn(path: String) {
-        let entries = delegate?.columnView(self, entriesForPath: path) ?? []
-
         let table = ColumnTableView()
         table.owner = self
         table.headerView = nil
@@ -167,9 +172,21 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.widthAnchor.constraint(equalToConstant: Self.columnWidth).isActive = true
 
+        let id = nextColumnID
+        nextColumnID += 1
+
         stack.addArrangedSubview(scroll)
-        columns.append(Column(path: path, entries: entries, table: table, scroll: scroll))
+        columns.append(Column(id: id, path: path, entries: [], table: table, scroll: scroll))
         table.reloadData()
+
+        // The column shows up empty and fills in when the listing lands.
+        delegate?.columnView(self, entriesForPath: path) { [weak self] entries in
+            guard let self, let idx = self.columns.firstIndex(where: { $0.id == id }) else { return }
+            self.columns[idx].entries = entries
+            self.isRebuilding = true
+            self.columns[idx].table.reloadData()
+            self.isRebuilding = false
+        }
 
         // Scroll the new column into view once layout has caught up.
         DispatchQueue.main.async { [weak self] in

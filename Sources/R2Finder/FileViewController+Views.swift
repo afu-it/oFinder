@@ -18,13 +18,20 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
     func outlineView(_ ov: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         guard let entry = item as? FileEntry else { return entries.count } // root
         guard entry.isDir else { return 0 }
+        // Zero until the listing lands — loadChildren reloads the item then.
+        // Listing a folder inline here blocks the main thread for the round-trip.
         loadChildren(for: entry)
         return entry.children.count
     }
 
     func outlineView(_ ov: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        guard let entry = item as? FileEntry else { return entries[index] }
-        return entry.children[index]
+        // Bounds-checked on purpose: AppKit can ask for a row it cached before
+        // the model shrank (it materializes rows lazily inside itemAtRow:), and
+        // an out-of-range subscript here is a hard trap that takes the app down.
+        // A placeholder renders as a blank row until the pending reload lands.
+        let siblings = (item as? FileEntry).map(\.children) ?? entries
+        guard index >= 0, index < siblings.count else { return FileEntry() }
+        return siblings[index]
     }
 
     func outlineView(_ ov: NSOutlineView, isItemExpandable item: Any) -> Bool {
@@ -121,12 +128,32 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
         openEntry(entry)
     }
 
-    // Keep the Quick Look panel in sync when the selection changes.
+    // Keep the Quick Look panel in sync when the selection changes, and record
+    // the selection so a reload can restore it (see reloadOutlinePreservingState).
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        if !isRestoringOutlineState {
+            selectedOutlinePaths = Set(outlineView.selectedRowIndexes.compactMap {
+                (outlineView.item(atRow: $0) as? FileEntry)?.path
+            })
+        }
         if QLPreviewPanel.sharedPreviewPanelExists(),
            QLPreviewPanel.shared().isVisible {
             QLPreviewPanel.shared().reloadData()
         }
+    }
+
+    // Expansion is likewise tracked as it happens rather than read back from
+    // the outline at reload time, when its rows and `entries` disagree.
+    func outlineViewItemDidExpand(_ notification: Notification) {
+        guard !isRestoringOutlineState,
+              let entry = notification.userInfo?["NSObject"] as? FileEntry else { return }
+        expandedOutlinePaths.insert(entry.path)
+    }
+
+    func outlineViewItemDidCollapse(_ notification: Notification) {
+        guard !isRestoringOutlineState,
+              let entry = notification.userInfo?["NSObject"] as? FileEntry else { return }
+        expandedOutlinePaths.remove(entry.path)
     }
 
     // ── Drag source ─────────────────────────────────────────────────────────
@@ -284,20 +311,12 @@ extension FileViewController: NSCollectionViewDataSource, NSCollectionViewDelega
 
 extension FileViewController: MillerColumnViewDelegate {
 
-    /// Entries for one column: icons loaded synchronously, folders first with
-    /// localized ordering (matching the old NSBrowser-era behavior).
-    func columnView(_ v: MillerColumnView, entriesForPath path: String) -> [FileEntry] {
-        let result = Self.entriesList(forPath: path, showHidden: Self.showHidden)
-        let ws = NSWorkspace.shared
-        for fe in result {
-            let icon = ws.icon(forFile: fe.path)
-            icon.size = NSSize(width: 16, height: 16)
-            fe.icon = icon
-        }
-        return result.sorted { a, b in
-            if a.isDir != b.isDir { return a.isDir }
-            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-        }
+    /// Entries for one column: folders first with localized ordering (matching
+    /// the old NSBrowser-era behavior). Listing and icons run off-main — done
+    /// inline, clicking a folder on an SMB share froze the UI for the round-trip.
+    func columnView(_ v: MillerColumnView, entriesForPath path: String,
+                    completion: @escaping @MainActor ([FileEntry]) -> Void) {
+        loadColumnEntries(forPath: path, completion: completion)
     }
 
     func columnView(_ v: MillerColumnView, didSelectDirectory path: String) {
