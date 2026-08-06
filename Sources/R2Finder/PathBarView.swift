@@ -85,7 +85,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
 
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
 
             field.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -97,6 +97,28 @@ final class PathBarView: NSView, NSTextFieldDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
+    /// Width follows the content, so the toolbar's flexible spaces can centre
+    /// the bar on the crumbs themselves. A fixed minimum width made the trail
+    /// sit at the left edge of a wider invisible box, which read as being off
+    /// centre even though the box was not.
+    override var intrinsicContentSize: NSSize {
+        let width: CGFloat
+        if isEditing {
+            let attributes: [NSAttributedString.Key: Any] = [.font: field.font ?? .systemFont(ofSize: 12)]
+            width = (field.stringValue as NSString).size(withAttributes: attributes).width
+                + Self.fieldPadding
+        } else {
+            width = stack.fittingSize.width + 8
+        }
+        // Floor so an empty or one-word location still looks like a field;
+        // ceiling so a deep path cannot crowd out the rest of the toolbar —
+        // past it the crumbs truncate instead.
+        return NSSize(width: min(max(width, 120), 560), height: 24)
+    }
+
+    /// Bezel inset plus room for the caret at the end of the text.
+    private static let fieldPadding: CGFloat = 22
+
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: – Content
     // ─────────────────────────────────────────────────────────────────────────
@@ -105,6 +127,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         guard !isEditing else { return }
         path = newPath
         rebuildCrumbs()
+        invalidateIntrinsicContentSize()
     }
 
     private func crumbs(for path: String) -> [PathCrumb] {
@@ -169,6 +192,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         field.stringValue = path
         field.isHidden = false
         stack.isHidden = true
+        invalidateIntrinsicContentSize()
         window?.makeFirstResponder(field)
         // Select everything: the reason to open this is usually to copy the
         // path, and a caret sitting in the middle of it helps nobody.
@@ -181,6 +205,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         isEditing = false
         field.isHidden = true
         stack.isHidden = false
+        invalidateIntrinsicContentSize()
         window?.makeFirstResponder(nil)
 
         guard commit, let resolved = Self.resolve(typed), resolved != path else {

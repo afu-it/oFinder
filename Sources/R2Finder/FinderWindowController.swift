@@ -339,10 +339,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             let bar = PathBarView(frame: .zero)
             bar.delegate = self
             bar.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                bar.widthAnchor.constraint(greaterThanOrEqualToConstant: 220),
-                bar.heightAnchor.constraint(equalToConstant: 24),
-            ])
+            // No width constraint: the bar reports its own, so it stays as
+            // wide as the path and no wider.
+            bar.heightAnchor.constraint(equalToConstant: 24).isActive = true
             pathBar = bar
             item.view = bar
             return item
