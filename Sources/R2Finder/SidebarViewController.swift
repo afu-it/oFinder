@@ -26,6 +26,9 @@ private final class SidebarItem {
     let icon: NSImage?
     let isHeader: Bool
     let networkHostname: String?  // non-nil for network hosts
+    /// Set for mounted volumes. Read once when the section is built rather
+    /// than per redraw: it is a statfs call, and the number moves slowly.
+    var capacity: VolumeCapacity?
     var children: [SidebarItem] = []
 
     init(header title: String) {
@@ -221,14 +224,18 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         // Always add Macintosh HD (root)
         let hddIcon = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
             ?? NSImage(named: NSImage.computerName)
-        header.children.append(SidebarItem(name: "Macintosh HD", path: "/", icon: hddIcon))
+        let boot = SidebarItem(name: "Macintosh HD", path: "/", icon: hddIcon)
+        boot.capacity = VolumeCapacity(path: "/")
+        header.children.append(boot)
 
         for vol in VolumeService.volumes() {
             // Skip the symlink that points to /
             if vol.path == "/Volumes/Macintosh HD" { continue }
             let icon = NSImage(systemSymbolName: "externaldrive", accessibilityDescription: nil)
                 ?? NSImage(named: NSImage.multipleDocumentsName)
-            header.children.append(SidebarItem(name: vol.name, path: vol.path, icon: icon))
+            let item = SidebarItem(name: vol.name, path: vol.path, icon: icon)
+            item.capacity = VolumeCapacity(path: vol.path)
+            header.children.append(item)
         }
     }
 
@@ -517,6 +524,25 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     // MARK: – NSOutlineViewDelegate
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Volume rows carry a capacity bar and a free-space line under the name,
+    /// so they need more room than a plain row.
+    func outlineView(_ ov: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
+        (item as? SidebarItem)?.capacity != nil ? 42 : ov.rowHeight
+    }
+
+    private func volumeCell(for si: SidebarItem, capacity: VolumeCapacity,
+                            in ov: NSOutlineView) -> NSView {
+        let identifier = NSUserInterfaceItemIdentifier("VolumeCell")
+        let cell = ov.makeView(withIdentifier: identifier, owner: self) as? VolumeCellView
+            ?? {
+                let cell = VolumeCellView(frame: .zero)
+                cell.identifier = identifier
+                return cell
+            }()
+        cell.configure(name: si.name, icon: si.icon, capacity: capacity)
+        return cell
+    }
+
     func outlineView(_ ov: NSOutlineView, isGroupItem item: Any) -> Bool {
         (item as? SidebarItem)?.isHeader ?? false
     }
@@ -548,6 +574,10 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                 }()
             cell.textField?.stringValue = si.name
             return cell
+        }
+
+        if let capacity = si.capacity {
+            return volumeCell(for: si, capacity: capacity, in: ov)
         }
 
         let identifier = NSUserInterfaceItemIdentifier("ItemCell")
