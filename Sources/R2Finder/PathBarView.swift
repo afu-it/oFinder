@@ -91,9 +91,13 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         addSubview(field)
 
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            // Centred rather than pinned: if anything ever makes the bar wider
+            // than its contents, the trail stays in the middle of the capsule
+            // macOS draws around it instead of hugging one edge.
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
 
             field.leadingAnchor.constraint(equalTo: leadingAnchor),
             field.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -122,7 +126,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         // truncates once it would reach the controls on either side.
         let sideControls: CGFloat = 380
         let ceiling = max(280, (window?.frame.width ?? 1000) - sideControls)
-        return NSSize(width: min(max(width, 120), ceiling), height: 24)
+        // Showing the trail, the width is the trail: macOS draws a capsule
+        // around the item at exactly the size reported here, and any floor
+        // above the content leaves the crumbs adrift inside it. Editing keeps
+        // a floor, because a field has to have somewhere to type.
+        let floor: CGFloat = isEditing ? 220 : 0
+        return NSSize(width: min(max(width, floor), ceiling), height: 24)
     }
 
     override func viewDidMoveToWindow() {
