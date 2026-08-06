@@ -100,10 +100,29 @@ final class TabBarView: NSView {
     func setTabs(_ titles: [String], selected: Int) {
         self.titles = titles
         selectedIndex = selected
-        rebuild()
+
+        // Reuse the existing tabs whenever the count is unchanged — a
+        // selection change or a reorder must not replace the view a drag is
+        // currently being delivered to. Only opening or closing a tab rebuilds.
+        let items = stack.arrangedSubviews.compactMap { $0 as? TabItemView }
+        guard items.count == titles.count else {
+            rebuild()
+            return
+        }
+        for (index, item) in items.enumerated() {
+            item.index = index
+            item.update(title: titles[index],
+                        isSelected: index == selected,
+                        showsClose: titles.count > 1)
+        }
+        needsDisplay = true
     }
 
     private func rebuild() {
+        // A rebuild means the view that owned any in-flight drag is gone, so
+        // its mouseUp will never arrive to clear this. Left set, the strip
+        // would refuse every later edge drag.
+        edgeSignalled = false
         for view in stack.arrangedSubviews {
             stack.removeArrangedSubview(view)
             view.removeFromSuperview()

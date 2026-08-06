@@ -28,6 +28,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     private var fileVC: FileViewController { activePane.fileVC }
     var isSplit: Bool { panes.count > 1 }
 
+
     init(path: String) {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 650),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],

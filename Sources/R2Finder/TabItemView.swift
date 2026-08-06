@@ -18,7 +18,7 @@ final class TabItemView: NSView {
 
     private let label = NSTextField(labelWithString: "")
     private let closeButton: HoverButton
-    private let isSelected: Bool
+    private var isSelected: Bool
 
     /// Distance the pointer must travel before a press counts as a drag.
     /// Without it, the small movement inside an ordinary click reorders tabs
@@ -64,6 +64,25 @@ final class TabItemView: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    /// Re-dresses an existing tab rather than replacing it.
+    ///
+    /// Recreating tabs on every refresh destroys the view that is mid-gesture:
+    /// AppKit delivers mouseDragged to whichever view took the mouseDown, and
+    /// selecting on press rebuilt the strip out from under it. Clicks survived
+    /// that, drags did not.
+    func update(title: String, isSelected: Bool, showsClose: Bool) {
+        label.stringValue = title
+        closeButton.isHidden = !showsClose
+        guard isSelected != self.isSelected else { return }
+        self.isSelected = isSelected
+        label.textColor = isSelected ? .labelColor : .secondaryLabelColor
+        needsDisplay = true
+        // updateLayer only runs when the layer is marked dirty.
+        layer?.backgroundColor = isSelected
+            ? NSColor.controlBackgroundColor.cgColor
+            : NSColor.windowBackgroundColor.cgColor
+    }
 
     override func updateLayer() {
         layer?.backgroundColor = isSelected
