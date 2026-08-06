@@ -368,6 +368,13 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             menu.addItem(.separator())
             add(L10n.t("action.rename", "Rename"), #selector(renameSelected(_:)))
             add(L10n.t("action.getInfo", "Get Info"), #selector(showInfoSelected(_:)))
+            if entry.isDir {
+                // target stays nil so the responder chain carries this up to
+                // FinderWindowController, which owns the sidebar.
+                menu.addItem(withTitle: L10n.t("action.addToSidebar", "Add to Sidebar"),
+                             action: #selector(FinderWindowController.addToSidebar(_:)),
+                             keyEquivalent: "")
+            }
             menu.addItem(.separator())
             // Compress / Uncompress
             let ext = (entry.path as NSString).pathExtension.lowercased()
