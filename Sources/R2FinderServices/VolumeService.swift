@@ -42,23 +42,27 @@ public enum VolumeService {
     /// the identifier shifting language with it.
     public static func specialDirs() -> [VolumeEntry] {
         let home = NSHomeDirectory()
-        let dirs: [(key: String, name: String, rel: String)] = [
-            ("home", "Home", ""),
-            ("desktop", "Desktop", "/Desktop"),
-            ("documents", "Documents", "/Documents"),
-            ("downloads", "Downloads", "/Downloads"),
-            ("music", "Music", "/Music"),
-            ("pictures", "Pictures", "/Pictures"),
-            ("movies", "Movies", "/Movies"),
+        // Absolute paths rather than fragments joined onto the home directory:
+        // Applications is the system folder, and ~/Applications — which is
+        // where a home-relative join lands — usually holds nothing but a few
+        // browser shortcuts. That is not what "Applications" means to anyone
+        // clicking it in the sidebar.
+        let dirs: [(key: String, name: String, path: String)] = [
+            ("home", "Home", home),
+            ("desktop", "Desktop", home + "/Desktop"),
+            ("documents", "Documents", home + "/Documents"),
+            ("downloads", "Downloads", home + "/Downloads"),
+            ("music", "Music", home + "/Music"),
+            ("pictures", "Pictures", home + "/Pictures"),
+            ("movies", "Movies", home + "/Movies"),
             ("applications", "Applications", "/Applications"),
         ]
         var result: [VolumeEntry] = []
         for d in dirs {
-            let full = home + d.rel
             var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: full, isDirectory: &isDir),
+            guard FileManager.default.fileExists(atPath: d.path, isDirectory: &isDir),
                   isDir.boolValue else { continue }
-            result.append(VolumeEntry(name: d.name, path: full, key: d.key))
+            result.append(VolumeEntry(name: d.name, path: d.path, key: d.key))
         }
         return result
     }
