@@ -457,8 +457,11 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             add(L10n.t("action.rename", "Rename"), #selector(renameSelected(_:)))
             add(L10n.t("action.getInfo", "Get Info"), #selector(showInfoSelected(_:)))
             if entry.isDir {
-                // target stays nil so the responder chain carries this up to
-                // FinderWindowController, which owns the sidebar.
+                // target stays nil so the responder chain carries these up to
+                // FinderWindowController, which owns the tabs and the sidebar.
+                menu.addItem(withTitle: L10n.t("action.openInNewTab", "Open in New Tab"),
+                             action: #selector(FinderWindowController.openInNewTab(_:)),
+                             keyEquivalent: "")
                 menu.addItem(withTitle: L10n.t("action.addToSidebar", "Add to Sidebar"),
                              action: #selector(FinderWindowController.addToSidebar(_:)),
                              keyEquivalent: "")

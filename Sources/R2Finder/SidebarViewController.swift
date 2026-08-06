@@ -14,6 +14,7 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController, didSelectPath path: String)
     func sidebar(_ sidebar: SidebarViewController,
                  dropFilePaths paths: [String], toDir dstDir: String, isMove: Bool)
+    func sidebar(_ sidebar: SidebarViewController, openInNewTab path: String)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -700,6 +701,15 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     /// Any favourite can be removed, built-in ones included. A removed
     /// built-in is remembered as removed, and comes back by navigating to the
     /// folder and using Add to Sidebar.
+    @objc private func openClickedInNewTab(_ sender: Any?) {
+        guard let path = openTargetPath else { return }
+        delegate?.sidebar(self, openInNewTab: path)
+    }
+
+    /// Captured with the menu, like the eject and remove targets: clickedRow
+    /// has reset to -1 by the time the item fires.
+    private var openTargetPath: String?
+
     @objc private func removeClickedFavorite(_ sender: Any?) {
         guard let entry = removeTargetEntry else { return }
         FavoritesStore.remove(entry)
@@ -767,11 +777,24 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         menu.removeAllItems()
         ejectTargetPath = nil
         removeTargetEntry = nil
+        openTargetPath = nil
 
         let row = outlineView.clickedRow
         guard row >= 0, let item = outlineView.item(atRow: row) else { return }
 
+        // Anything with a location can be opened in a tab — favourites,
+        // volumes and Recents alike. Network hosts have no path yet, so they
+        // fall through to whatever else applies.
+        if let si = item as? SidebarItem, !si.isHeader, let path = si.path {
+            openTargetPath = path
+            let open = menu.addItem(
+                withTitle: L10n.t("action.openInNewTab", "Open in New Tab"),
+                action: #selector(openClickedInNewTab(_:)), keyEquivalent: "")
+            open.target = self
+        }
+
         if let entry = favoriteEntry(for: item) {
+            if !menu.items.isEmpty { menu.addItem(.separator()) }
             removeTargetEntry = entry
             let remove = menu.addItem(
                 withTitle: L10n.t("action.removeFromSidebar", "Remove from Sidebar"),
@@ -781,6 +804,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         }
 
         if let path = clickedVolumePath(), isEjectable(path) {
+            if !menu.items.isEmpty { menu.addItem(.separator()) }
             ejectTargetPath = path
             let eject = menu.addItem(withTitle: L10n.t("action.eject", "Eject"),
                                      action: #selector(ejectClickedVolume(_:)),

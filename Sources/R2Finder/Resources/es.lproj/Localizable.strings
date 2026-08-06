@@ -160,3 +160,4 @@
 "view.splitPane" = "Dividir panel";
 "view.mergePanes" = "Unir paneles";
 "view.otherPane" = "Ir al otro panel";
+"action.openInNewTab" = "Abrir en una pestaña nueva";

@@ -160,3 +160,4 @@
 "view.splitPane" = "Split Pane";
 "view.mergePanes" = "Merge Panes";
 "view.otherPane" = "Go to Other Pane";
+"action.openInNewTab" = "Open in New Tab";

@@ -57,6 +57,8 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             return !RecentsService.isRecents(fileVC.currentPath)
         case #selector(closeTab(_:)):
             return true
+        case #selector(openInNewTab(_:)):
+            return fileVC.selectedPaths().contains(where: Self.isDirectory)
         case #selector(toggleSplit(_:)):
             item.title = isSplit
                 ? L10n.t("view.mergePanes", "Merge Panes")
@@ -194,6 +196,19 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         // closeTab reports back through paneDidCloseLastTab when it is the
         // pane's last, which collapses the split or closes the window.
         activePane.closeTab(at: activePane.activeIndex)
+    }
+
+    /// Opens the selected folders as tabs. Several selected folders open
+    /// several tabs, and the last one wins the selection — the same thing that
+    /// happens if you open them one at a time.
+    @IBAction func openInNewTab(_ sender: Any?) {
+        let folders = fileVC.selectedPaths().filter(Self.isDirectory)
+        guard !folders.isEmpty else { return }
+        for folder in folders { activePane.addTab(path: folder) }
+    }
+
+    func openInNewTab(path: String) {
+        activePane.addTab(path: path)
     }
 
     @IBAction func selectNextTab(_ sender: Any?) {
@@ -376,6 +391,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
     func sidebar(_ sidebar: SidebarViewController, didSelectPath path: String) {
         activePane.navigate(to: path)
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, openInNewTab path: String) {
+        openInNewTab(path: path)
     }
 
     func sidebar(_ sidebar: SidebarViewController,
