@@ -151,6 +151,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // target = nil → first-responder chain reaches FileViewController
         editMenu.addItem(withTitle: L10n.t("action.copy", "Copy"),
                          action: #selector(FileViewController.copySelected(_:)), keyEquivalent: "c")
+        let copyPath = editMenu.addItem(
+            withTitle: L10n.t("action.copyAsPath", "Copy as Path"),
+            action: #selector(FileViewController.copyPathsAsText(_:)),
+            keyEquivalent: "c")
+        copyPath.keyEquivalentModifierMask = [.command, .option]
         editMenu.addItem(withTitle: L10n.t("action.cut", "Cut"),
                          action: #selector(FileViewController.cutSelected(_:)), keyEquivalent: "x")
         editMenu.addItem(withTitle: L10n.t("action.paste", "Paste"),

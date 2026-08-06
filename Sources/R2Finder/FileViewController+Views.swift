@@ -463,6 +463,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             add(L10n.t("action.open", "Open"), #selector(openSelected(_:)))
             menu.addItem(.separator())
             add(L10n.t("action.copy", "Copy"), #selector(copySelected(_:)))
+            add(L10n.t("action.copyAsPath", "Copy as Path"), #selector(copyPathsAsText(_:)))
             add(L10n.t("action.cut", "Cut"), #selector(cutSelected(_:)))
             menu.addItem(.separator())
             add(L10n.t("action.rename", "Rename"), #selector(renameSelected(_:)))

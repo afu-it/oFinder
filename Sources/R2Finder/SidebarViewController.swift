@@ -707,6 +707,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         delegate?.sidebar(self, openInNewTab: path)
     }
 
+    @objc private func copyClickedPath(_ sender: Any?) {
+        guard let path = openTargetPath, !RecentsService.isRecents(path) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
+    }
+
     @objc private func openClickedInNewSplit(_ sender: Any?) {
         guard let path = openTargetPath else { return }
         delegate?.sidebar(self, openInNewSplit: path)
@@ -806,6 +812,15 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                     : L10n.t("action.openInNewSplit", "Open in New Panel"),
                 action: #selector(openClickedInNewSplit(_:)), keyEquivalent: "")
             split.target = self
+
+            // Recents is a query, not a place, so there is no path worth
+            // handing to a terminal.
+            if !RecentsService.isRecents(path) {
+                let copyPath = menu.addItem(
+                    withTitle: L10n.t("action.copyAsPath", "Copy as Path"),
+                    action: #selector(copyClickedPath(_:)), keyEquivalent: "")
+                copyPath.target = self
+            }
         }
 
         if let entry = favoriteEntry(for: item) {

@@ -816,6 +816,21 @@ final class FileViewController: NSViewController {
     // MARK: – Transfers
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Puts the selected items' paths on the clipboard as text.
+    ///
+    /// Separate from Copy, which puts the files themselves there: pasting into
+    /// a folder should move file data, and pasting into a terminal should give
+    /// you something to type after `cd`. One clipboard cannot mean both.
+    @IBAction func copyPathsAsText(_ sender: Any?) {
+        let paths = selectedPaths()
+        guard !paths.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        // Newline-separated, which is what a shell loop and a text editor both
+        // expect from a list of paths.
+        pasteboard.setString(paths.joined(separator: "\n"), forType: .string)
+    }
+
     func performTransfer(fromPaths paths: [String], toDir dstDir: String, isMove: Bool) {
         if let rejection = TransferGuard.check(sources: paths, dstDir: dstDir,
                                                isMove: isMove) {

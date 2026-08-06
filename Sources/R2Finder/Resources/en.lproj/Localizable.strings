@@ -163,3 +163,4 @@
 "action.openInNewTab" = "Open in New Tab";
 "action.openInNewSplit" = "Open in New Panel";
 "action.openInOtherPane" = "Open in Other Panel";
+"action.copyAsPath" = "Copy as Path";
