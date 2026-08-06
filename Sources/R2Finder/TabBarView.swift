@@ -50,14 +50,26 @@ final class TabBarView: NSView {
         addButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(addButton)
 
+        // Hug the tabs so the strip ends where the last tab does, rather than
+        // spreading them across the full width.
+        stack.setHuggingPriority(.defaultHigh, for: .horizontal)
+
+        let addTrailing = addButton.trailingAnchor.constraint(
+            lessThanOrEqualTo: trailingAnchor, constant: -6)
+        // Below required, so that with enough tabs to fill the strip the plus
+        // slides off rather than the layout becoming unsatisfiable.
+        addTrailing.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.topAnchor.constraint(equalTo: topAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: addButton.leadingAnchor,
-                                            constant: -4),
 
-            addButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            // Sits just past the last tab rather than pinned to the far edge:
+            // it belongs to the run of tabs, and a plus floating alone at the
+            // right reads as a toolbar button for the whole window.
+            addButton.leadingAnchor.constraint(equalTo: stack.trailingAnchor, constant: 4),
+            addTrailing,
             addButton.centerYAnchor.constraint(equalTo: centerYAnchor),
             addButton.widthAnchor.constraint(equalToConstant: 20),
             addButton.heightAnchor.constraint(equalToConstant: 20),

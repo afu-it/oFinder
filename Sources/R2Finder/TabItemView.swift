@@ -48,14 +48,18 @@ final class TabItemView: NSView {
         addSubview(closeButton)
 
         NSLayoutConstraint.activate([
-            closeButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 14),
             closeButton.heightAnchor.constraint(equalToConstant: 14),
 
-            label.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 4),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            // The title gives way before the close button does: a truncated
+            // name is still usable, a half-drawn close target is not.
+            label.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor,
+                                            constant: -4),
         ])
     }
 
