@@ -120,6 +120,17 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                            name: NSWorkspace.didUnmountNotification, object: nil)
     }
 
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        // Column autoresizing only distributes the *delta* when the table's
+        // frame changes; it never reconciles an initial mismatch. The column
+        // starts at AppKit's default 100pt inside a 200pt sidebar, so labels
+        // stayed truncated by that 100pt no matter how wide the split was
+        // dragged. Sizing the last column to fit closes the gap on every
+        // layout pass.
+        outlineView.sizeLastColumnToFit()
+    }
+
     deinit {
         smbBrowser?.stop()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
