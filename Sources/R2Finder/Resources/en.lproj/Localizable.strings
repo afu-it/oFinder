@@ -150,3 +150,5 @@
 "transfer.rejectAlreadyThere" = "Those items are already in this folder.";
 "action.addToSidebar" = "Add to Sidebar";
 "action.removeFromSidebar" = "Remove from Sidebar";
+"action.eject" = "Eject";
+"eject.failed" = "Couldn't eject “%@”.";

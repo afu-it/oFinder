@@ -150,3 +150,5 @@
 "transfer.rejectAlreadyThere" = "Esos elementos ya están en esta carpeta.";
 "action.addToSidebar" = "Añadir a la barra lateral";
 "action.removeFromSidebar" = "Eliminar de la barra lateral";
+"action.eject" = "Expulsar";
+"eject.failed" = "No se pudo expulsar “%@”.";

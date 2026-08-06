@@ -679,15 +679,81 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         reloadFavorites()
     }
 
+    /// Whether this volume can be detached.
+    ///
+    /// The boot volume is excluded outright — it reports as removable on some
+    /// Macs, and offering to eject the disk the system is running from is not
+    /// a useful thing to be right about. Network mounts have no media to
+    /// eject, but unmountAndEjectDevice unmounts them, which is what "eject"
+    /// means for a share.
+    private func isEjectable(_ path: String) -> Bool {
+        guard path != "/" else { return false }
+        let keys: Set<URLResourceKey> = [
+            .volumeIsEjectableKey, .volumeIsRemovableKey,
+            .volumeIsLocalKey, .volumeIsRootFileSystemKey,
+        ]
+        guard let values = try? URL(fileURLWithPath: path)
+            .resourceValues(forKeys: keys) else { return false }
+        if values.volumeIsRootFileSystem == true { return false }
+        return values.volumeIsEjectable == true
+            || values.volumeIsRemovable == true
+            || values.volumeIsLocal == false
+    }
+
+    /// The clicked row's path, but only if it is a volume row.
+    private func clickedVolumePath() -> String? {
+        let row = outlineView.clickedRow
+        guard row >= 0, let item = outlineView.item(atRow: row) as? SidebarItem,
+              !item.isHeader, let path = item.path,
+              volumesSection?.children.contains(where: { $0 === item }) == true
+        else { return nil }
+        return path
+    }
+
+    @objc private func ejectClickedVolume(_ sender: Any?) {
+        guard let path = ejectTargetPath else { return }
+        do {
+            try NSWorkspace.shared.unmountAndEjectDevice(at: URL(fileURLWithPath: path))
+        } catch {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = L10n.f("eject.failed", "Couldn't eject “%@”.",
+                                       (path as NSString).lastPathComponent)
+            // The reason is nearly always "a file is open" and the system
+            // message names the process, so it is worth surfacing verbatim.
+            alert.informativeText = error.localizedDescription
+            alert.addButton(withTitle: L10n.t("button.ok", "OK"))
+            alert.runModal()
+        }
+        // On success the workspace unmount notification rebuilds the section.
+    }
+
+    /// Captured when the menu is built: clickedRow is only valid during the
+    /// click, and by the time the menu item fires it has reset to -1.
+    private var ejectTargetPath: String?
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        ejectTargetPath = nil
+
         let row = outlineView.clickedRow
-        guard row >= 0, let item = outlineView.item(atRow: row),
-              let entry = favoriteEntry(for: item), case .custom = entry else { return }
-        let remove = menu.addItem(
-            withTitle: L10n.t("action.removeFromSidebar", "Remove from Sidebar"),
-            action: #selector(removeClickedFavorite(_:)), keyEquivalent: "")
-        remove.target = self
+        guard row >= 0, let item = outlineView.item(atRow: row) else { return }
+
+        if let entry = favoriteEntry(for: item), case .custom = entry {
+            let remove = menu.addItem(
+                withTitle: L10n.t("action.removeFromSidebar", "Remove from Sidebar"),
+                action: #selector(removeClickedFavorite(_:)), keyEquivalent: "")
+            remove.target = self
+            return
+        }
+
+        if let path = clickedVolumePath(), isEjectable(path) {
+            ejectTargetPath = path
+            let eject = menu.addItem(withTitle: L10n.t("action.eject", "Eject"),
+                                     action: #selector(ejectClickedVolume(_:)),
+                                     keyEquivalent: "")
+            eject.target = self
+        }
     }
 
     /// Rebuilds the sidebar and restores expansion, which reloadData drops.
