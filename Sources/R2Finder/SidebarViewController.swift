@@ -59,6 +59,7 @@ private final class SidebarItem {
 
 final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                                    NSOutlineViewDelegate,
+                                   NSMenuDelegate,
                                    @preconcurrency NetServiceBrowserDelegate,
                                    @preconcurrency NetServiceDelegate {
 
@@ -79,6 +80,16 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     private var discoveredServices: [NetService] = []
     private var networkHeader = SidebarItem(header: L10n.t("sidebar.network", "NETWORK"))
 
+    /// Parallel to the Favorites header's children — index i in one is index i
+    /// in the other. Kept so a dragged row can be turned back into the entry
+    /// it represents without threading the identifier through SidebarItem.
+    private var favoriteEntries: [FavoritesStore.Entry] = []
+
+    /// Drag type for reordering favourites. Distinct from .fileURL so a row
+    /// drag and a file drop can be told apart at the drop site.
+    private static let favoriteDragType =
+        NSPasteboard.PasteboardType("com.r2finder.favorite")
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 600))
         view.wantsLayer = true
@@ -94,7 +105,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         outlineView.delegate = self
 
         // Drag destination – accept file drops onto sidebar items
-        outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.registerForDraggedTypes([.fileURL, Self.favoriteDragType])
+        outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
+
+        let contextMenu = NSMenu()
+        contextMenu.delegate = self
+        outlineView.menu = contextMenu
 
         let col = NSTableColumn(identifier: .init("main"))
         col.resizingMask = .autoresizingMask
@@ -144,21 +160,34 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         sections = []
 
         // ── Favourites ────────────────────────────────────────────────────
+        // Order comes from FavoritesStore so the user's arrangement survives
+        // relaunch; the rows themselves are resolved fresh each time.
         let favHeader = SidebarItem(header: L10n.t("sidebar.favorites", "FAVORITES"))
+        let specialsByKey = Dictionary(
+            uniqueKeysWithValues: VolumeService.specialDirs().compactMap { dir in
+                dir.key.map { ($0, dir) }
+            })
 
-        // Recents leads the section, as it does in Finder: it is the entry
-        // people reach for most and it belongs with the places, not the disks.
-        favHeader.children.append(SidebarItem(
-            name: L10n.t("sidebar.recents", "Recents"),
-            path: RecentsService.locationID,
-            icon: NSImage(systemSymbolName: "clock",
-                          accessibilityDescription: "recents")))
-
-        for special in VolumeService.specialDirs() {
-            let key = special.key ?? ""
-            favHeader.children.append(SidebarItem(
-                name: L10n.t("sidebar.\(key)", special.name), path: special.path,
-                icon: iconForSpecialDir(key, defaultPath: special.path)))
+        favoriteEntries = FavoritesStore.entries()
+        for entry in favoriteEntries {
+            switch entry {
+            case .recents:
+                favHeader.children.append(SidebarItem(
+                    name: L10n.t("sidebar.recents", "Recents"),
+                    path: RecentsService.locationID,
+                    icon: NSImage(systemSymbolName: "clock",
+                                  accessibilityDescription: "recents")))
+            case .special(let key):
+                guard let dir = specialsByKey[key] else { continue }
+                favHeader.children.append(SidebarItem(
+                    name: L10n.t("sidebar.\(key)", dir.name), path: dir.path,
+                    icon: iconForSpecialDir(key, defaultPath: dir.path)))
+            case .custom(let path):
+                let icon = NSWorkspace.shared.icon(forFile: path)
+                icon.size = NSSize(width: 16, height: 16)
+                favHeader.children.append(SidebarItem(
+                    name: (path as NSString).lastPathComponent, path: path, icon: icon))
+            }
         }
         sections.append(favHeader)
 
@@ -564,8 +593,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     // MARK: – Drag destination
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Only favourite rows are draggable, and only to reorder themselves.
+    func outlineView(_ ov: NSOutlineView,
+                     pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {
+        guard let entry = favoriteEntry(for: item) else { return nil }
+        let pbItem = NSPasteboardItem()
+        pbItem.setString(entry.id, forType: Self.favoriteDragType)
+        return pbItem
+    }
+
     func outlineView(_ ov: NSOutlineView, validateDrop info: NSDraggingInfo,
                      proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        // Reordering: dropping between favourite rows, never onto one.
+        if info.draggingPasteboard.availableType(from: [Self.favoriteDragType]) != nil {
+            guard index >= 0, isFavoritesHeader(item) else { return [] }
+            return .move
+        }
         guard let si = item as? SidebarItem, !si.isHeader, si.path != nil else { return [] }
         if info.draggingSourceOperationMask.contains(.move) { return .move }
         return .copy
@@ -573,6 +616,14 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
 
     func outlineView(_ ov: NSOutlineView, acceptDrop info: NSDraggingInfo,
                      item: Any?, childIndex index: Int) -> Bool {
+        if let id = info.draggingPasteboard.string(forType: Self.favoriteDragType),
+           let entry = FavoritesStore.Entry(id: id) {
+            guard index >= 0, isFavoritesHeader(item) else { return false }
+            FavoritesStore.move(entry, to: index)
+            reloadFavorites()
+            return true
+        }
+
         guard let si = item as? SidebarItem, !si.isHeader, let dstDir = si.path else { return false }
         guard let urls = info.draggingPasteboard.readObjects(
                 forClasses: [NSURL.self],
@@ -581,5 +632,52 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         let isMove = info.draggingSourceOperationMask.contains(.move)
         delegate?.sidebar(self, dropFilePaths: urls.map(\.path), toDir: dstDir, isMove: isMove)
         return true
+    }
+
+    private func isFavoritesHeader(_ item: Any?) -> Bool {
+        guard let si = item as? SidebarItem else { return false }
+        return si === sections.first
+    }
+
+    private func favoriteEntry(for item: Any) -> FavoritesStore.Entry? {
+        guard let si = item as? SidebarItem, !si.isHeader,
+              let children = sections.first?.children,
+              let idx = children.firstIndex(where: { $0 === si }),
+              idx < favoriteEntries.count else { return nil }
+        return favoriteEntries[idx]
+    }
+
+    // ─────────────
+    // Context menu
+    // ─────────────
+
+    /// Only user-added favourites can be removed. Recents and the special
+    /// directories come back on the next launch anyway, so offering to remove
+    /// them would be a button that quietly does nothing.
+    @objc private func removeClickedFavorite(_ sender: Any?) {
+        let row = outlineView.clickedRow
+        guard row >= 0, let item = outlineView.item(atRow: row),
+              let entry = favoriteEntry(for: item),
+              case .custom = entry else { return }
+        FavoritesStore.remove(entry)
+        reloadFavorites()
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let row = outlineView.clickedRow
+        guard row >= 0, let item = outlineView.item(atRow: row),
+              let entry = favoriteEntry(for: item), case .custom = entry else { return }
+        let remove = menu.addItem(
+            withTitle: L10n.t("action.removeFromSidebar", "Remove from Sidebar"),
+            action: #selector(removeClickedFavorite(_:)), keyEquivalent: "")
+        remove.target = self
+    }
+
+    /// Rebuilds the sidebar and restores expansion, which reloadData drops.
+    func reloadFavorites() {
+        buildSections()
+        outlineView.reloadData()
+        outlineView.expandItem(nil, expandChildren: true)
     }
 }

@@ -148,3 +148,5 @@
 "transfer.rejectIntoItself" = "“%@” no se puede mover dentro de sí mismo.";
 "transfer.rejectIntoItselfBody" = "Elige un destino fuera de la carpeta que estás moviendo.";
 "transfer.rejectAlreadyThere" = "Esos elementos ya están en esta carpeta.";
+"action.addToSidebar" = "Añadir a la barra lateral";
+"action.removeFromSidebar" = "Eliminar de la barra lateral";

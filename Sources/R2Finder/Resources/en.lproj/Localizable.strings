@@ -148,3 +148,5 @@
 "transfer.rejectIntoItself" = "“%@” can't be moved into itself.";
 "transfer.rejectIntoItselfBody" = "Choose a destination outside the folder you are moving.";
 "transfer.rejectAlreadyThere" = "Those items are already in this folder.";
+"action.addToSidebar" = "Add to Sidebar";
+"action.removeFromSidebar" = "Remove from Sidebar";

@@ -97,6 +97,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                          keyEquivalent: "N") // Cmd+Shift+N
 
         fileMenu.addItem(.separator())
+        // Cmd+Ctrl+T, matching Finder. target = nil → the responder chain
+        // reaches FinderWindowController, which also greys it out when there
+        // is no folder to add.
+        let addToSidebar = fileMenu.addItem(
+            withTitle: L10n.t("action.addToSidebar", "Add to Sidebar"),
+            action: #selector(FinderWindowController.addToSidebar(_:)),
+            keyEquivalent: "t")
+        addToSidebar.keyEquivalentModifierMask = [.command, .control]
+
+        fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: L10n.t("menu.closeWindow", "Close Window"),
                          action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
 

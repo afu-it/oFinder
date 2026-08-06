@@ -6,8 +6,19 @@ import AppKit
 import R2FinderServices
 
 final class FinderWindowController: NSWindowController, NSToolbarDelegate,
+                                    NSMenuItemValidation,
                                     SidebarViewControllerDelegate,
                                     FileViewControllerDelegate {
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(addToSidebar(_:)) {
+            return !sidebarCandidates().isEmpty
+        }
+        if item.action == #selector(createNewFolder(_:)) {
+            return !RecentsService.isRecents(fileVC.currentPath)
+        }
+        return true
+    }
 
     private var splitVC = NSSplitViewController()
     private let sidebarVC = SidebarViewController()
@@ -239,6 +250,31 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         // Recents is a query result, not a place a folder can be created in.
         guard let current, !RecentsService.isRecents(current) else { return }
         fileVC.createNewFolder(inPath: current)
+    }
+
+    @IBAction func addToSidebar(_ sender: Any?) {
+        let targets = sidebarCandidates()
+        guard !targets.isEmpty else { return }
+        var changed = false
+        for path in targets where FavoritesStore.add(path: path) { changed = true }
+        if changed { sidebarVC.reloadFavorites() }
+    }
+
+    /// Selected folders, or the folder being viewed when nothing is selected —
+    /// the same fallback Finder uses, so ⌘⌃T always has something to act on.
+    private func sidebarCandidates() -> [String] {
+        let selected = fileVC.selectedPaths().filter(Self.isDirectory)
+        if !selected.isEmpty { return selected }
+        let current = fileVC.currentPath
+        guard !current.isEmpty, !RecentsService.isRecents(current),
+              Self.isDirectory(current) else { return [] }
+        return [current]
+    }
+
+    private static func isDirectory(_ path: String) -> Bool {
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            && isDir.boolValue
     }
 
     @IBAction func goToFolderAction(_ sender: Any?) {
