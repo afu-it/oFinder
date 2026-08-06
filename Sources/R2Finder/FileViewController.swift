@@ -436,6 +436,9 @@ final class FileViewController: NSViewController {
                 self.isLoading = false
                 self.loadingSpinner.stopAnimation(nil)
                 self.currentLocationUnreadable = unreadable
+                if unreadable {
+                    FullDiskAccess.explain(blockedPath: path, in: self.view.window)
+                }
 
                 // On an in-place refresh (FSEvents during a transfer or
                 // extraction), carry over the already-loaded icons by path —

@@ -166,3 +166,6 @@
 "sidebar.cloud" = "NUBE";
 "sidebar.trash" = "Papelera";
 "status.unreadable" = "No se puede leer esta carpeta — concede Acceso total al disco en Ajustes";
+"fda.title" = "No se puede abrir “%@”";
+"fda.body" = "macOS protege la Papelera y algunas carpetas más. Leerlas requiere Acceso total al disco, que solo puedes conceder en Ajustes del Sistema — una app no puede pedirlo directamente.\n\nAñade R2 Finder a la lista y vuelve a abrirla.";
+"fda.openSettings" = "Abrir Ajustes";

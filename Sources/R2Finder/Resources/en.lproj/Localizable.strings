@@ -166,3 +166,6 @@
 "sidebar.cloud" = "CLOUD";
 "sidebar.trash" = "Trash";
 "status.unreadable" = "Can't read this folder — grant Full Disk Access in System Settings";
+"fda.title" = "“%@” can't be opened";
+"fda.body" = "macOS protects the Trash and a few other folders. Reading them needs Full Disk Access, which only you can grant in System Settings — an app cannot ask for it directly.\n\nAdd R2 Finder to the list, then quit and reopen it.";
+"fda.openSettings" = "Open Settings";
