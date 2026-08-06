@@ -81,8 +81,10 @@ final class VolumeCellView: NSTableCellView {
         iconView.image = icon
         bar.fraction = capacity.usedFraction
 
+        // Free | total. No words, so nothing here needs translating — the bar
+        // above already says which number is which.
         let free = Self.sizeFormatter.string(fromByteCount: capacity.available)
         let total = Self.sizeFormatter.string(fromByteCount: capacity.total)
-        freeLabel.stringValue = L10n.f("volume.freeOfTotal", "%@ free of %@", free, total)
+        freeLabel.stringValue = "\(free) | \(total)"
     }
 }

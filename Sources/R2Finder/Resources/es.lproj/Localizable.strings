@@ -152,4 +152,3 @@
 "action.removeFromSidebar" = "Eliminar de la barra lateral";
 "action.eject" = "Expulsar";
 "eject.failed" = "No se pudo expulsar “%@”.";
-"volume.freeOfTotal" = "%@ libres de %@";

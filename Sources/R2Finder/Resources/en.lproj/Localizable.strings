@@ -152,4 +152,3 @@
 "action.removeFromSidebar" = "Remove from Sidebar";
 "action.eject" = "Eject";
 "eject.failed" = "Couldn't eject “%@”.";
-"volume.freeOfTotal" = "%@ free of %@";
