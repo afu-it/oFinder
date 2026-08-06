@@ -24,6 +24,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     private var navControl: NSSegmentedControl?      // back / forward segments
     private var viewModeControl: NSSegmentedControl?
     private var pathBar: PathBarView?
+    private var newFolderItem: NSToolbarItem?
 
     private var activePane: PaneViewController { panes[activePaneIndex] }
     private var fileVC: FileViewController { activePane.fileVC }
@@ -279,6 +280,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         pathBar?.show(path: path)
         sidebarVC.highlightPath(path)
         viewModeControl?.selectedSegment = fileVC.viewMode.rawValue
+        if let newFolderItem { applyNewFolderRole(to: newFolderItem) }
         navControl?.setEnabled(activePane.activeTab.history.canGoBack, forSegment: 0)
         navControl?.setEnabled(activePane.activeTab.history.canGoForward, forSegment: 1)
     }
@@ -352,10 +354,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
         case "NewFolder":
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: L10n.t("action.newFolder", "New Folder"))
-            item.label = L10n.t("action.newFolder", "New Folder")
             item.target = self
-            item.action = #selector(createNewFolder(_:))
+            newFolderItem = item
+            applyNewFolderRole(to: item)
             return item
 
         default:
@@ -369,6 +370,58 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
     @IBAction func backForwardAction(_ seg: NSSegmentedControl) {
         if seg.selectedSegment == 0 { goBack(seg) } else { goForward(seg) }
+    }
+
+    /// The same toolbar slot is New Folder everywhere except in the Trash,
+    /// where creating a folder makes no sense and emptying it is the only
+    /// thing anyone comes here to do.
+    private func applyNewFolderRole(to item: NSToolbarItem) {
+        if TrashService.isTrash(fileVC.currentPath) {
+            item.image = NSImage(systemSymbolName: "trash.slash",
+                                 accessibilityDescription: L10n.t("action.emptyTrash", "Empty Trash"))
+            item.label = L10n.t("action.emptyTrash", "Empty Trash")
+            item.toolTip = item.label
+            item.action = #selector(emptyTrash(_:))
+        } else {
+            item.image = NSImage(systemSymbolName: "folder.badge.plus",
+                                 accessibilityDescription: L10n.t("action.newFolder", "New Folder"))
+            item.label = L10n.t("action.newFolder", "New Folder")
+            item.toolTip = item.label
+            item.action = #selector(createNewFolder(_:))
+        }
+    }
+
+    @IBAction func emptyTrash(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = L10n.t("trash.emptyTitle",
+                                   "Permanently erase the items in the Trash?")
+        alert.informativeText = L10n.t("trash.emptyBody",
+                                       "You can't undo this action.")
+        alert.addButton(withTitle: L10n.t("action.emptyTrash", "Empty Trash"))
+        alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
+        alert.buttons.first?.hasDestructiveAction = true
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        // Asks Finder rather than deleting the files here. Reading ~/.Trash
+        // needs Full Disk Access and deleting from it needs the same; Finder
+        // already has both, and it also handles locked items and the
+        // per-volume .Trashes folders that a plain removeItem loop would miss.
+        let script = NSAppleScript(source: "tell application \"Finder\" to empty the trash")
+        var error: NSDictionary?
+        script?.executeAndReturnError(&error)
+
+        if let error {
+            let failure = NSAlert()
+            failure.alertStyle = .warning
+            failure.messageText = L10n.t("trash.emptyFailed", "Couldn't empty the Trash")
+            failure.informativeText = (error[NSAppleScript.errorMessage] as? String)
+                ?? L10n.t("progress.unknownError", "Unknown error")
+            failure.addButton(withTitle: L10n.t("button.ok", "OK"))
+            failure.runModal()
+            return
+        }
+        activePane.fileVC.loadPath(TrashService.path)
     }
 
     @IBAction func createNewFolder(_ sender: Any?) {

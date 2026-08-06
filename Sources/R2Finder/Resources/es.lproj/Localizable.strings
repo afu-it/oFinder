@@ -169,3 +169,7 @@
 "fda.title" = "No se puede abrir “%@”";
 "fda.body" = "macOS protege la Papelera y algunas carpetas más. Leerlas requiere Acceso total al disco, que solo puedes conceder en Ajustes del Sistema — una app no puede pedirlo directamente.\n\nAñade R2 Finder a la lista y vuelve a abrirla.";
 "fda.openSettings" = "Abrir Ajustes";
+"action.emptyTrash" = "Vaciar la papelera";
+"trash.emptyTitle" = "¿Borrar permanentemente los elementos de la papelera?";
+"trash.emptyBody" = "No puedes deshacer esta acción.";
+"trash.emptyFailed" = "No se pudo vaciar la papelera";

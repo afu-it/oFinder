@@ -169,3 +169,7 @@
 "fda.title" = "“%@” can't be opened";
 "fda.body" = "macOS protects the Trash and a few other folders. Reading them needs Full Disk Access, which only you can grant in System Settings — an app cannot ask for it directly.\n\nAdd R2 Finder to the list, then quit and reopen it.";
 "fda.openSettings" = "Open Settings";
+"action.emptyTrash" = "Empty Trash";
+"trash.emptyTitle" = "Permanently erase the items in the Trash?";
+"trash.emptyBody" = "You can't undo this action.";
+"trash.emptyFailed" = "Couldn't empty the Trash";

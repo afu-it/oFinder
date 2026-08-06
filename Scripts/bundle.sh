@@ -60,6 +60,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleSignature</key>         <string>????</string>
   <key>LSMinimumSystemVersion</key>    <string>13.0</string>
   <key>NSHighResolutionCapable</key>   <true/>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>R2 Finder asks Finder to empty the Trash, which needs permission to send it commands.</string>
   <key>NSPrincipalClass</key>          <string>NSApplication</string>
   <key>NSSupportsAutomaticTermination</key><false/>
 </dict>
@@ -90,4 +92,23 @@ for b in "${bundles[@]}"; do
 done
 shopt -u nullglob
 
+# 5) Sign.
+#
+#    Prefer a real signing identity over ad-hoc. TCC remembers an app by its
+#    code signature: for an ad-hoc signature that is the binary's own hash, so
+#    every rebuild looks like a different app and any Full Disk Access grant is
+#    dropped. Signing with a stable certificate keeps the grant across builds.
+#
+#    Create the identity once with Scripts/make-signing-cert.sh, or point
+#    CODESIGN_IDENTITY at your own.
+IDENTITY="${CODESIGN_IDENTITY:-R2 Finder Self-Signed}"
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+    codesign --force --deep --sign "$IDENTITY" "$APP" 2>&1 | sed 's/^/    /'
+    SIGNED_AS="$IDENTITY"
+else
+    codesign --force --deep --sign - "$APP" 2>&1 | sed 's/^/    /'
+    SIGNED_AS="ad-hoc (Full Disk Access will not survive rebuilds)"
+fi
+
 echo "OK: $APP (version ${VERSION}, ${#bundles[@]} resource bundle(s))"
+echo "    signed: ${SIGNED_AS}"
