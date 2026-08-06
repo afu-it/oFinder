@@ -38,6 +38,9 @@ final class VolumeCellView: NSTableCellView {
         freeLabel.font = .systemFont(ofSize: 10)
         freeLabel.textColor = .secondaryLabelColor
         freeLabel.lineBreakMode = .byTruncatingTail
+        // Hug the text, so the label's trailing edge — and with it the bar's —
+        // sits at the end of the words rather than at the edge of the sidebar.
+        freeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         addSubview(freeLabel)
 
         NSLayoutConstraint.activate([
@@ -54,12 +57,16 @@ final class VolumeCellView: NSTableCellView {
             // volume, and starting it at the icon would make it read as part
             // of the disclosure column.
             bar.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            bar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             bar.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 3),
             bar.heightAnchor.constraint(equalToConstant: 4),
+            // Width follows the line beneath instead of stretching to the
+            // edge: a bar wider than its own caption reads as a separate
+            // element rather than as a heading for it.
+            bar.trailingAnchor.constraint(equalTo: freeLabel.trailingAnchor),
 
             freeLabel.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
-            freeLabel.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
+            freeLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor,
+                                                constant: -8),
             freeLabel.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 2),
         ])
     }
@@ -72,8 +79,14 @@ final class VolumeCellView: NSTableCellView {
         iconView.image = icon
         bar.fraction = capacity.usedFraction
 
+        // The total is left out on purpose. At the sidebar's usual width there
+        // is room for about 144pt of text; percentage plus free plus total
+        // measures 196pt and truncates. The bar already shows the proportion,
+        // the percentage puts a number on it, and free space is the figure
+        // someone actually acts on — the total is the one that can go.
         let free = Self.sizeFormatter.string(fromByteCount: capacity.available)
-        let total = Self.sizeFormatter.string(fromByteCount: capacity.total)
-        freeLabel.stringValue = L10n.f("volume.freeOfTotal", "%@ free of %@", free, total)
+        let percent = Int((capacity.usedFraction * 100).rounded())
+        freeLabel.stringValue = L10n.f("volume.usedAndFree", "%d%% used · %@ free",
+                                       percent, free)
     }
 }
