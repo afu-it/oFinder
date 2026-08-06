@@ -343,9 +343,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             let bar = PathBarView(frame: .zero)
             bar.delegate = self
             bar.translatesAutoresizingMaskIntoConstraints = false
-            // No width constraint: the bar reports its own, so it stays as
-            // wide as the path and no wider.
-            bar.heightAnchor.constraint(equalToConstant: 24).isActive = true
+            // No size constraints at all: the bar reports both from its
+            // contents. A fixed height fought the toolbar row's own height and
+            // left the text riding above the middle of the capsule.
             pathBar = bar
             item.view = bar
             return item

@@ -131,7 +131,10 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         // above the content leaves the crumbs adrift inside it. Editing keeps
         // a floor, because a field has to have somewhere to type.
         let floor: CGFloat = isEditing ? 220 : 0
-        return NSSize(width: min(max(width, floor), ceiling), height: 24)
+        // Height comes from the tallest thing inside rather than a constant,
+        // so the crumbs sit on the capsule's own centre line.
+        let height = max(stack.fittingSize.height, field.fittingSize.height, 22)
+        return NSSize(width: min(max(width, floor), ceiling), height: height)
     }
 
     override func viewDidMoveToWindow() {
