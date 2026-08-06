@@ -9,7 +9,6 @@ final class VolumeCellView: NSTableCellView {
     private let nameLabel = NSTextField(labelWithString: "")
     private let bar = CapacityBarView()
     private let freeLabel = NSTextField(labelWithString: "")
-    private let percentLabel = NSTextField(labelWithString: "")
 
     private static let sizeFormatter: ByteCountFormatter = {
         let formatter = ByteCountFormatter()
@@ -44,16 +43,6 @@ final class VolumeCellView: NSTableCellView {
         freeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         addSubview(freeLabel)
 
-        percentLabel.translatesAutoresizingMaskIntoConstraints = false
-        percentLabel.font = .systemFont(ofSize: 10)
-        percentLabel.textColor = .secondaryLabelColor
-        percentLabel.alignment = .right
-        // Must not be the thing that gives way when the sidebar narrows: it is
-        // two or three characters, and the free-space text truncates far more
-        // gracefully.
-        percentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        percentLabel.setContentHuggingPriority(.required, for: .horizontal)
-        addSubview(percentLabel)
 
         NSLayoutConstraint.activate([
             iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
@@ -79,13 +68,8 @@ final class VolumeCellView: NSTableCellView {
             freeLabel.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
             freeLabel.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 2),
 
-            // Same line as the free-space text, pushed to the row's right
-            // edge. Sharing a baseline keeps the two figures reading as one
-            // caption; the gap between them is what separates them.
-            percentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            percentLabel.firstBaselineAnchor.constraint(equalTo: freeLabel.firstBaselineAnchor),
-            freeLabel.trailingAnchor.constraint(lessThanOrEqualTo: percentLabel.leadingAnchor,
-                                                constant: -6),
+            freeLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor,
+                                                constant: -8),
         ])
     }
 
@@ -97,18 +81,8 @@ final class VolumeCellView: NSTableCellView {
         iconView.image = icon
         bar.fraction = capacity.usedFraction
 
-        // The total is left out on purpose. At the sidebar's usual width there
-        // is room for about 144pt of text, and free-plus-total already
-        // measures 140pt before the percentage needs anywhere to go. The bar
-        // shows the proportion, the percentage puts a number on it, and free
-        // space is the figure someone acts on — the total is the one that can
-        // go.
         let free = Self.sizeFormatter.string(fromByteCount: capacity.available)
-        freeLabel.stringValue = L10n.f("volume.free", "%@ free", free)
-
-        // No localized format: digits and "%" read the same everywhere this
-        // ships, and a key would be a translation nobody can get wrong or
-        // right.
-        percentLabel.stringValue = "\(Int((capacity.usedFraction * 100).rounded()))%"
+        let total = Self.sizeFormatter.string(fromByteCount: capacity.total)
+        freeLabel.stringValue = L10n.f("volume.freeOfTotal", "%@ free of %@", free, total)
     }
 }
