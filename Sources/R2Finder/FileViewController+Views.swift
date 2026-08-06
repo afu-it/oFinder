@@ -441,7 +441,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         }
     }
 
-    /// "New Split" only stays true until there is one. Once the window is
+    /// "New Pane" only stays true until there is one. Once the window is
     /// already split the same command opens in the other half, and a menu that
     /// says otherwise is describing a window the user is not looking at.
     var splitActionTitle: String {
@@ -449,7 +449,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             .isSplit ?? false
         return isSplit
             ? L10n.t("action.openInOtherPane", "Open in Other Pane")
-            : L10n.t("action.openInNewSplit", "Open in New Split")
+            : L10n.t("action.openInNewSplit", "Open in New Pane")
     }
 
     func contextMenu(for entry: FileEntry?) -> NSMenu {
