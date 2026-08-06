@@ -140,3 +140,11 @@
 /* MARK: trash */
 "trash.confirmMany" = "Move %d items to the Trash?";
 "trash.confirmOne" = "Move \"%@\" to the Trash?";
+
+/* MARK: transfer */
+"action.undoMove" = "Undo Move";
+"transfer.confirmLargeMove" = "Move %d items to “%@”?";
+"transfer.confirmLargeMoveBody" = "The originals will be removed from their current location.";
+"transfer.rejectIntoItself" = "“%@” can't be moved into itself.";
+"transfer.rejectIntoItselfBody" = "Choose a destination outside the folder you are moving.";
+"transfer.rejectAlreadyThere" = "Those items are already in this folder.";

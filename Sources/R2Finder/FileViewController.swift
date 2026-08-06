@@ -786,6 +786,28 @@ final class FileViewController: NSViewController {
     // ─────────────────────────────────────────────────────────────────────────
 
     func performTransfer(fromPaths paths: [String], toDir dstDir: String, isMove: Bool) {
+        if let rejection = TransferGuard.check(sources: paths, dstDir: dstDir,
+                                               isMove: isMove) {
+            reportRejection(rejection)
+            return
+        }
+
+        // A large move is the one that hurts when it was not intended, and it
+        // is also the one nobody notices starting.
+        if isMove, paths.count >= 25 {
+            let alert = NSAlert()
+            alert.messageText = L10n.f("transfer.confirmLargeMove",
+                                       "Move %d items to “%@”?",
+                                       paths.count,
+                                       (dstDir as NSString).lastPathComponent)
+            alert.informativeText = L10n.t(
+                "transfer.confirmLargeMoveBody",
+                "The originals will be removed from their current location.")
+            alert.addButton(withTitle: L10n.t("action.moveHere", "Move Here"))
+            alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+
         if FileService.checkCollision(sources: paths, dstDir: dstDir) {
             let alert = NSAlert()
             alert.messageText = L10n.t("conflict.title", "An item with that name already exists")
@@ -799,6 +821,46 @@ final class FileViewController: NSViewController {
                           overwrite: resp == .alertFirstButtonReturn, isMove: isMove)
         } else {
             startTransfer(paths: paths, dstDir: dstDir, overwrite: false, isMove: isMove)
+        }
+    }
+
+    private func reportRejection(_ rejection: TransferGuard.Rejection) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        switch rejection {
+        case .destinationIsSource(let source), .destinationInsideSource(let source):
+            alert.messageText = L10n.f(
+                "transfer.rejectIntoItself",
+                "“%@” can't be moved into itself.",
+                (source as NSString).lastPathComponent)
+            alert.informativeText = L10n.t(
+                "transfer.rejectIntoItselfBody",
+                "Choose a destination outside the folder you are moving.")
+        case .alreadyThere:
+            alert.messageText = L10n.t("transfer.rejectAlreadyThere",
+                                       "Those items are already in this folder.")
+            alert.informativeText = ""
+        }
+        alert.addButton(withTitle: L10n.t("button.ok", "OK"))
+        alert.runModal()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: – Undo
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @IBAction func undoLastMove(_ sender: Any?) {
+        guard let record = MoveUndo.available, let rsync = Self.rsyncPath else { return }
+        MoveUndo.clear()
+
+        // One rsync per original parent directory. A drag usually has a single
+        // parent, so this is normally one pass.
+        for (targetDir, movedPaths) in record.restoreGroups {
+            let pwc = makeProgressWindow(title: L10n.t("progress.moving", "Moving"),
+                                         destination: targetDir)
+            let (onProgress, onDone) = progressHandlers(pwc)
+            TransferService.move(rsyncPath: rsync, sources: movedPaths, dstDir: targetDir,
+                                 overwrite: false, onProgress: onProgress, onDone: onDone)
         }
     }
 
@@ -837,8 +899,20 @@ final class FileViewController: NSViewController {
         let pwc = makeProgressWindow(title: isMove ? L10n.t("progress.moving", "Moving") : L10n.t("progress.copying", "Copying"), destination: dstDir)
         let (onProgress, onDone) = progressHandlers(pwc)
         if isMove {
+            // Record only on success. A failed or half-finished move leaves
+            // files in both places, and "undo" against that would move the
+            // wrong set.
+            let recordingDone: TransferService.CompletionHandler = { ok, msg in
+                if ok {
+                    Task { @MainActor in
+                        MoveUndo.record(originalPaths: paths, dstDir: dstDir)
+                    }
+                }
+                onDone(ok, msg)
+            }
             TransferService.move(rsyncPath: rsync, sources: paths, dstDir: dstDir,
-                                 overwrite: overwrite, onProgress: onProgress, onDone: onDone)
+                                 overwrite: overwrite, onProgress: onProgress,
+                                 onDone: recordingDone)
         } else {
             TransferService.copy(rsyncPath: rsync, sources: paths, dstDir: dstDir,
                                  overwrite: overwrite, onProgress: onProgress, onDone: onDone)

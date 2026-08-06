@@ -407,6 +407,9 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         if item.action == #selector(pasteHere(_:)) || item.action == #selector(moveHere(_:)) {
             return !effectiveClipboardPaths().isEmpty
         }
+        if item.action == #selector(undoLastMove(_:)) {
+            return MoveUndo.available != nil
+        }
         if item.action == #selector(toggleHidden(_:)) {
             item.title = Self.showHidden ? L10n.t("action.hideHiddenFiles", "Hide Hidden Files") : L10n.t("action.showHiddenFiles", "Show Hidden Files")
         }

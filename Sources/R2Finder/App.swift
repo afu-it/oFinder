@@ -102,6 +102,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // ── Edición ───────────────────────────────────────────────────────────
         let editMenu = submenu(L10n.t("menu.edit", "Edit"))
+        // target = nil → validateMenuItem on FileViewController greys this out
+        // when there is nothing to put back.
+        editMenu.addItem(withTitle: L10n.t("action.undoMove", "Undo Move"),
+                         action: #selector(FileViewController.undoLastMove(_:)),
+                         keyEquivalent: "z")
+        editMenu.addItem(.separator())
         // target = nil → first-responder chain reaches FileViewController
         editMenu.addItem(withTitle: L10n.t("action.copy", "Copy"),
                          action: #selector(FileViewController.copySelected(_:)), keyEquivalent: "c")
