@@ -25,6 +25,9 @@ protocol FileViewControllerDelegate: AnyObject {
 final class FileViewController: NSViewController {
 
     weak var delegate: FileViewControllerDelegate?
+    /// Coalesces flow-layout metric invalidations from thumbnail arrivals.
+    var iconLayoutRefreshScheduled = false
+
     private(set) var currentPath: String
 
     static var showHidden = false

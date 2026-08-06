@@ -339,6 +339,7 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
                 }
         }
         cell.imageView?.image = entry.thumbnail ?? entry.icon
+        cell.alphaValue = entry.name.hasPrefix(".") ? 0.55 : 1.0
         return cell
     }
 

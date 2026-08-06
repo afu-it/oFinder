@@ -86,8 +86,7 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
                 }()
             cell.textField?.stringValue = entry.name
             cell.imageView?.image = thumbnail(for: entry) ?? entry.icon
-            cell.alphaValue = (FileClipboard.operation == .cut
-                               && FileClipboard.paths.contains(entry.path)) ? 0.35 : 1.0
+            cell.alphaValue = opacity(for: entry)
             return cell
         }
 
@@ -119,6 +118,7 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
         default:
             break
         }
+        cell.alphaValue = opacity(for: entry)
         return cell
     }
 
@@ -211,7 +211,17 @@ extension FileViewController: NSDraggingSource {
 // ─────────────────────────────────────────────────────────────────────────────
 
 extension FileViewController: NSCollectionViewDataSource, NSCollectionViewDelegate,
-                              ContextMenuCollectionViewDelegate {
+                              ContextMenuCollectionViewDelegate,
+                              NSCollectionViewDelegateFlowLayout {
+
+    func collectionView(_ cv: NSCollectionView, layout: NSCollectionViewLayout,
+                        sizeForItemAt indexPath: IndexPath) -> NSSize {
+        guard indexPath.item < entries.count else { return NSSize(width: 90, height: 90) }
+        let well = IconCollectionViewItem.wellWidth(for: entries[indexPath.item])
+        // The label needs room even under a narrow portrait thumbnail, so the
+        // cell never gets tighter than the old square did.
+        return NSSize(width: max(well, 74) + 8, height: 90)
+    }
 
     func collectionView(_ cv: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
         entries.count
@@ -225,15 +235,22 @@ extension FileViewController: NSCollectionViewDataSource, NSCollectionViewDelega
             let entry = entries[idx]
             item.textField?.stringValue = entry.name
             if let thumb = thumbnail(for: entry) {
+                // The well already matches the picture's aspect, so let it
+                // fill — including scaling up a thumbnail smaller than 64pt.
+                item.imageView?.imageScaling = .scaleProportionallyUpOrDown
                 item.imageView?.image = thumb
             } else if let icon = entry.icon?.copy() as? NSImage {
                 // Type icon while the thumbnail generates, or forever if the
-                // file has no preview. Scaled up to fill the 64pt well.
-                icon.size = NSSize(width: 64, height: 64)
+                // file has no preview. Only scaled down: blowing a 16pt raster
+                // up to 64 is what made these look washed out.
+                icon.size = NSSize(width: IconCollectionViewItem.wellHeight,
+                                   height: IconCollectionViewItem.wellHeight)
+                item.imageView?.imageScaling = .scaleProportionallyDown
                 item.imageView?.image = icon
             }
-            item.view.alphaValue = (FileClipboard.operation == .cut
-                                    && FileClipboard.paths.contains(entry.path)) ? 0.35 : 1.0
+            (item as? IconCollectionViewItem)?
+                .setWellWidth(IconCollectionViewItem.wellWidth(for: entry))
+            item.view.alphaValue = opacity(for: entry)
         }
         return item
     }
@@ -356,6 +373,19 @@ extension FileViewController: MillerColumnViewDelegate {
 
 extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
 
+    /// How solid an entry should be drawn.
+    ///
+    /// Hidden items are shown faded once Show Hidden Files is on, so they read
+    /// as "normally not here" without a separate badge or colour. Cut items
+    /// fade further, and win when an entry is both — the clipboard state is
+    /// the one the user is in the middle of acting on.
+    func opacity(for entry: FileEntry) -> CGFloat {
+        if FileClipboard.operation == .cut, FileClipboard.paths.contains(entry.path) {
+            return 0.35
+        }
+        return entry.name.hasPrefix(".") ? 0.55 : 1.0
+    }
+
     /// Cached thumbnail if ready; otherwise nil now and a redraw of just this
     /// row once QuickLook answers.
     ///
@@ -383,6 +413,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         case .icon:
             guard let idx = entries.firstIndex(where: { $0 === entry }) else { return }
             collectionView.reloadItems(at: [IndexPath(item: idx, section: 0)])
+            scheduleIconLayoutRefresh()
         case .columns:
             columnView.redraw(entry: entry)
         default:
@@ -390,6 +421,23 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             guard row >= 0 else { return }
             outlineView.reloadData(forRowIndexes: IndexSet(integer: row),
                                    columnIndexes: IndexSet(integersIn: 0..<outlineView.numberOfColumns))
+        }
+    }
+
+    /// Flow layout caches item sizes, so a newly-arrived thumbnail only
+    /// changes the grid once metrics are invalidated. Arrivals come in bursts
+    /// while scrolling and each invalidation re-measures the whole section, so
+    /// they are coalesced into one pass per runloop turn.
+    private func scheduleIconLayoutRefresh() {
+        guard !iconLayoutRefreshScheduled else { return }
+        iconLayoutRefreshScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.iconLayoutRefreshScheduled = false
+            guard self.viewMode == .icon else { return }
+            let context = NSCollectionViewFlowLayoutInvalidationContext()
+            context.invalidateFlowLayoutDelegateMetrics = true
+            self.collectionView.collectionViewLayout?.invalidateLayout(with: context)
         }
     }
 

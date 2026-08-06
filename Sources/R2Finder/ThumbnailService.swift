@@ -26,10 +26,39 @@ final class ThumbnailService {
     private var unavailable: Set<String> = []
     private var inFlight: Set<String> = []
 
+    /// Corner radius as a fraction of the shorter side, so a wide photo and a
+    /// tall one get corners that look equally rounded.
+    private static let cornerFraction: CGFloat = 0.10
+
     /// Keyed on mtime as well as path so an edited file does not keep showing
     /// the thumbnail of its previous contents.
     private func key(_ path: String, _ mtime: Int64) -> String {
         "\(path)|\(mtime)"
+    }
+
+    /// Wraps the CGImage at its own aspect ratio, with rounded corners.
+    ///
+    /// The size passed to QuickLook is a bounding box, not a shape: a tall
+    /// photo comes back tall. Declaring the NSImage square would stretch it to
+    /// fit, which is the one thing a thumbnail must never do.
+    ///
+    /// Rounding happens here, in the pixels, rather than by giving the image
+    /// view a corner radius. A view's radius rounds the well — including the
+    /// empty space beside a portrait image — so the corners would float away
+    /// from the picture they belong to.
+    private static func rounded(_ cgImage: CGImage, scale: CGFloat) -> NSImage {
+        let logical = NSSize(width: CGFloat(cgImage.width) / scale,
+                             height: CGFloat(cgImage.height) / scale)
+        guard logical.width > 0, logical.height > 0 else {
+            return NSImage(cgImage: cgImage, size: .zero)
+        }
+        let radius = min(logical.width, logical.height) * cornerFraction
+
+        return NSImage(size: logical, flipped: false) { rect in
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).addClip()
+            NSImage(cgImage: cgImage, size: logical).draw(in: rect)
+            return true
+        }
     }
 
     /// Returns a cached thumbnail if there is one. Otherwise returns nil and,
@@ -43,10 +72,11 @@ final class ThumbnailService {
         inFlight.insert(k)
 
         let size = Self.renderSize
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
         let request = QLThumbnailGenerator.Request(
             fileAt: URL(fileURLWithPath: path),
             size: CGSize(width: size, height: size),
-            scale: NSScreen.main?.backingScaleFactor ?? 2,
+            scale: scale,
             // .thumbnail only, deliberately: the other representation types
             // fall back to the very type icon this exists to replace, so a
             // failure would be indistinguishable from a success.
@@ -63,8 +93,7 @@ final class ThumbnailService {
                     self.unavailable.insert(k)
                     return
                 }
-                let image = NSImage(cgImage: cgImage,
-                                    size: NSSize(width: size, height: size))
+                let image = Self.rounded(cgImage, scale: scale)
                 self.cache[k] = image
                 then(image)
             }

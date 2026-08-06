@@ -118,6 +118,28 @@ final class ContextMenuCollectionView: NSCollectionView {
 
 final class IconCollectionViewItem: NSCollectionViewItem {
 
+    /// Height is fixed and width follows the picture, so a portrait photo
+    /// stays as tall as a landscape one instead of being letterboxed into a
+    /// square well.
+    static let wellHeight: CGFloat = 64
+    static let minWellWidth: CGFloat = 32
+    static let maxWellWidth: CGFloat = 128
+
+    private var wellWidth: NSLayoutConstraint!
+
+    /// Width of the image well for an entry, from its thumbnail's aspect.
+    /// Reads `thumbnail` without requesting one: this is called for every item
+    /// during layout, and generating there would undo the on-demand loading.
+    static func wellWidth(for entry: FileEntry) -> CGFloat {
+        guard let thumb = entry.thumbnail, thumb.size.height > 0 else { return wellHeight }
+        let width = wellHeight * (thumb.size.width / thumb.size.height)
+        return min(max(width.rounded(), minWellWidth), maxWellWidth)
+    }
+
+    func setWellWidth(_ width: CGFloat) {
+        wellWidth.constant = width
+    }
+
     override func loadView() {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 90, height: 90))
         container.wantsLayer = true
@@ -136,11 +158,12 @@ final class IconCollectionViewItem: NSCollectionViewItem {
         tf.font = .systemFont(ofSize: 11)
         container.addSubview(tf)
 
+        wellWidth = iv.widthAnchor.constraint(equalToConstant: Self.wellHeight)
         NSLayoutConstraint.activate([
             iv.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
             iv.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            iv.widthAnchor.constraint(equalToConstant: 64),
-            iv.heightAnchor.constraint(equalToConstant: 64),
+            wellWidth,
+            iv.heightAnchor.constraint(equalToConstant: Self.wellHeight),
             tf.topAnchor.constraint(equalTo: iv.bottomAnchor, constant: 2),
             tf.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 2),
             tf.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -2),
