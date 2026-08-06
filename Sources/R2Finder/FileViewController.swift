@@ -41,8 +41,15 @@ final class FileViewController: NSViewController {
                 iconScrollView.isHidden = false
                 collectionView.reloadData()
             case .columns:
-                columnView.isHidden = false
-                columnView.reload(fromPath: currentPath)
+                // Column browsing walks a directory tree. Recents is a flat
+                // query with no tree to walk, so fall back to list there
+                // rather than showing an empty first column.
+                if RecentsService.isRecents(currentPath) {
+                    scrollView.isHidden = false
+                } else {
+                    columnView.isHidden = false
+                    columnView.reload(fromPath: currentPath)
+                }
             case .gallery:
                 // Gallery not yet implemented – fall back to list
                 scrollView.isHidden = false
@@ -343,11 +350,19 @@ final class FileViewController: NSViewController {
     func loadPath(_ path: String) {
         let pathChanged = currentPath != path
         currentPath = path
-        if pathChanged { startWatching(path: path) }
+        // Recents has no directory to watch; FSEvents on the token would fail
+        // and leave the previous directory's stream running.
+        if pathChanged {
+            if RecentsService.isRecents(path) {
+                stopWatching()
+            } else {
+                startWatching(path: path)
+            }
+        }
 
         // On navigation, blank the view immediately so the user sees they've
         // moved. On in-place refresh (FSEvents), keep the existing entries on
-        // screen so the UI doesn't flicker through L10n.t("progress.loading", "Loading…") every time
+        // screen so the UI doesn't flicker through Loading… every time
         // rsync deletes a file.
         if pathChanged {
             // The old directory's expansion/selection means nothing here, and
@@ -437,9 +452,18 @@ final class FileViewController: NSViewController {
         }
     }
 
-    /// Build FileEntry objects for a directory (no icons).
+    /// Build FileEntry objects for a location (no icons).
+    ///
+    /// Recents is a query, not a directory, so it bypasses DirectoryLister —
+    /// and it ignores `showHidden`, since the query never returns dotfiles.
     nonisolated static func entriesList(forPath path: String, showHidden: Bool) -> [FileEntry] {
-        guard let listed = DirectoryLister.list(path: path) else { return [] }
+        let listed: [DirEntry]
+        if RecentsService.isRecents(path) {
+            listed = RecentsService.list()
+        } else {
+            guard let dir = DirectoryLister.list(path: path) else { return [] }
+            listed = dir
+        }
         return listed.compactMap { e in
             if !showHidden && e.name.hasPrefix(".") { return nil }
             let fe = FileEntry()
@@ -475,7 +499,7 @@ final class FileViewController: NSViewController {
     func reloadAllViews() {
         reloadOutlinePreservingState()
         collectionView.reloadData()
-        if viewMode == .columns {
+        if viewMode == .columns, !RecentsService.isRecents(currentPath) {
             columnView.reload(fromPath: currentPath)
         }
     }
@@ -886,7 +910,7 @@ final class FileViewController: NSViewController {
         alert.addButton(withTitle: L10n.t("button.delete", "Delete"))
         alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
         alert.alertStyle = .critical
-        // Make the L10n.t("button.delete", "Delete") button visually destructive
+        // Make the Delete button visually destructive
         alert.buttons.first?.hasDestructiveAction = true
         guard let window = view.window else { return }
         alert.beginSheetModal(for: window) { [weak self] resp in
@@ -905,7 +929,7 @@ final class FileViewController: NSViewController {
     /// Extensions the bundled 7zz can extract (from `7zz i`, filtered to
     /// archive-like formats a user would actually right-click — executables,
     /// disk images the OS mounts, and zip-based document formats like .docx
-    /// are deliberately excluded). Drives L10n.t("action.extract", "Extract") in the context menu.
+    /// are deliberately excluded). Drives Extract in the context menu.
     /// "001" covers the split volumes this app itself creates.
     static let extractableExtensions: Set<String> = [
         "7z", "zip", "zipx", "rar", "r00", "tar", "tgz", "tbz", "tbz2",
@@ -1077,7 +1101,7 @@ final class FileViewController: NSViewController {
         return df.string(from: Date(timeIntervalSince1970: TimeInterval(unix)))
     }
 
-    /// Localized L10n.t("column.kind", "Kind") column text.
+    /// Localized Kind column text.
     ///
     /// Resolved from the filename extension, cached, because the previous
     /// `resourceValues(forKeys: [.contentTypeKey])` hit the filesystem once per

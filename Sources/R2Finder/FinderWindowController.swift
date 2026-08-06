@@ -3,6 +3,7 @@
 // hosting the (still Objective-C) sidebar and file view controllers.
 
 import AppKit
+import R2FinderServices
 
 final class FinderWindowController: NSWindowController, NSToolbarDelegate,
                                     SidebarViewControllerDelegate,
@@ -117,6 +118,12 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     }
 
     private func showCurrent(_ path: String) {
+        if RecentsService.isRecents(path) {
+            let title = L10n.t("sidebar.recents", "Recents")
+            window?.title = title
+            pathLabel?.stringValue = title
+            return
+        }
         let last = (path as NSString).lastPathComponent
         window?.title = last.isEmpty ? path : last
         pathLabel?.stringValue = path
@@ -132,8 +139,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // ───────────────────────────────────────────────
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.init("AppLogo"), .init("BackForward"), .init("ViewMode"),
-         .flexibleSpace, .init("PathLabel"), .flexibleSpace,
+        // Back/forward sits directly left of the path, so the control that
+        // changes the location reads as attached to the location it shows.
+        [.init("ViewMode"), .flexibleSpace,
+         .init("BackForward"), .init("PathLabel"), .flexibleSpace,
          .init("NewFolder"), .init("GoToFolder")]
     }
 
@@ -141,31 +150,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         toolbarDefaultItemIdentifiers(toolbar)
     }
 
-    private static var logo: NSImage? = {
-        var imgPath = Bundle.main.path(forResource: "r2_finder", ofType: "png")
-        if imgPath == nil, let exePath = Bundle.main.executablePath {
-            imgPath = ((exePath as NSString).deletingLastPathComponent as NSString)
-                .appendingPathComponent("../../r2_finder.png")
-        }
-        let image = imgPath.flatMap { NSImage(contentsOfFile: $0) }
-        return image ?? NSImage(systemSymbolName: "doc.text.magnifyingglass",
-                                accessibilityDescription: "R2 Finder")
-    }()
-
     func toolbar(_ toolbar: NSToolbar,
                  itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch itemIdentifier.rawValue {
-        case "AppLogo":
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            if let copy = Self.logo?.copy() as? NSImage {
-                copy.size = NSSize(width: 20, height: 20)
-                item.image = copy
-            }
-            item.label = "R2 Finder"
-            item.toolTip = "R2 Finder"
-            return item
-
         case "BackForward":
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
             // .momentary: each click ALWAYS fires the action with a valid
@@ -248,7 +236,8 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         let current = fileVC.currentPath.isEmpty
             ? (historyIndex >= 0 ? history[historyIndex] : nil)
             : fileVC.currentPath
-        guard let current else { return }
+        // Recents is a query result, not a place a folder can be created in.
+        guard let current, !RecentsService.isRecents(current) else { return }
         fileVC.createNewFolder(inPath: current)
     }
 

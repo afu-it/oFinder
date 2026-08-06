@@ -116,6 +116,7 @@
 "sidebar.movies" = "Movies";
 "sidebar.music" = "Music";
 "sidebar.network" = "NETWORK";
+"sidebar.recents" = "Recents";
 "sidebar.pictures" = "Pictures";
 
 /* MARK: split */

@@ -145,6 +145,15 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
 
         // ── Favourites ────────────────────────────────────────────────────
         let favHeader = SidebarItem(header: L10n.t("sidebar.favorites", "FAVORITES"))
+
+        // Recents leads the section, as it does in Finder: it is the entry
+        // people reach for most and it belongs with the places, not the disks.
+        favHeader.children.append(SidebarItem(
+            name: L10n.t("sidebar.recents", "Recents"),
+            path: RecentsService.locationID,
+            icon: NSImage(systemSymbolName: "clock",
+                          accessibilityDescription: "recents")))
+
         for special in VolumeService.specialDirs() {
             let key = special.key ?? ""
             favHeader.children.append(SidebarItem(

@@ -116,6 +116,7 @@
 "sidebar.movies" = "Películas";
 "sidebar.music" = "Música";
 "sidebar.network" = "RED";
+"sidebar.recents" = "Recientes";
 "sidebar.pictures" = "Imágenes";
 
 /* MARK: split */

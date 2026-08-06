@@ -386,7 +386,7 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         paste.target = self
         paste.keyEquivalentModifierMask = []
 
-        // AppKit hides this item and shows it in place of L10n.t("action.paste", "Paste") while Option
+        // AppKit hides this item and shows it in place of Paste while Option
         // is held. alternate = true + matching keyEquivalent is the standard
         // mechanism.
         let moveHere = menu.addItem(withTitle: L10n.t("action.moveHere", "Move Here"), action: #selector(moveHere(_:)), keyEquivalent: "")
