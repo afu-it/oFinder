@@ -16,7 +16,7 @@ final class TabItemView: NSView {
     var index = 0
 
     private let label = NSTextField(labelWithString: "")
-    private let closeButton = NSButton()
+    private let closeButton: HoverButton
     private let isSelected: Bool
 
     /// Distance the pointer must travel before a press counts as a drag.
@@ -26,6 +26,9 @@ final class TabItemView: NSView {
 
     init(title: String, isSelected: Bool, showsClose: Bool) {
         self.isSelected = isSelected
+        closeButton = HoverButton(
+            symbol: "xmark", pointSize: 8,
+            accessibilityDescription: L10n.t("tab.close", "Close Tab"))
         super.init(frame: .zero)
         wantsLayer = true
         translatesAutoresizingMaskIntoConstraints = false
@@ -37,24 +40,19 @@ final class TabItemView: NSView {
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
 
-        closeButton.isBordered = false
-        closeButton.image = NSImage(systemSymbolName: "xmark",
-                                    accessibilityDescription: L10n.t("tab.close", "Close Tab"))
-        closeButton.imageScaling = .scaleProportionallyDown
         closeButton.target = self
         closeButton.action = #selector(closeClicked)
         closeButton.isHidden = !showsClose
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(closeButton)
 
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
 
-            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 14),
-            closeButton.heightAnchor.constraint(equalToConstant: 14),
+            closeButton.widthAnchor.constraint(equalToConstant: 16),
+            closeButton.heightAnchor.constraint(equalToConstant: 16),
 
             // The title gives way before the close button does: a truncated
             // name is still usable, a half-drawn close target is not.

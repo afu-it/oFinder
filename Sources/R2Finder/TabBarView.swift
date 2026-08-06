@@ -25,11 +25,13 @@ final class TabBarView: NSView {
     private(set) var selectedIndex = 0
 
     private let stack = NSStackView()
-    private let addButton = NSButton()
+    private let addButton = HoverButton(
+        symbol: "plus", pointSize: 10,
+        accessibilityDescription: L10n.t("tab.new", "New Tab"))
 
     static let height: CGFloat = 28
-    private static let minTabWidth: CGFloat = 90
-    private static let maxTabWidth: CGFloat = 180
+    private static let minTabWidth: CGFloat = 68
+    private static let maxTabWidth: CGFloat = 132
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -41,13 +43,8 @@ final class TabBarView: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
-        addButton.bezelStyle = .texturedRounded
-        addButton.isBordered = false
-        addButton.image = NSImage(systemSymbolName: "plus",
-                                  accessibilityDescription: L10n.t("tab.new", "New Tab"))
         addButton.target = self
         addButton.action = #selector(newTabClicked)
-        addButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(addButton)
 
         // Hug the tabs so the strip ends where the last tab does, rather than
@@ -71,8 +68,8 @@ final class TabBarView: NSView {
             addButton.leadingAnchor.constraint(equalTo: stack.trailingAnchor, constant: 4),
             addTrailing,
             addButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            addButton.widthAnchor.constraint(equalToConstant: 20),
-            addButton.heightAnchor.constraint(equalToConstant: 20),
+            addButton.widthAnchor.constraint(equalToConstant: 18),
+            addButton.heightAnchor.constraint(equalToConstant: 18),
 
             heightAnchor.constraint(equalToConstant: Self.height),
         ])
