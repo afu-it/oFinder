@@ -82,6 +82,11 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         toolbar.displayMode = .iconOnly
         window?.toolbar = toolbar
         window?.titlebarAppearsTransparent = false
+        // The title said the folder's name and the path label said its path —
+        // two readings of the same thing competing for the middle of the
+        // titlebar. The label keeps the job; the title is still set, so the
+        // Window menu and Mission Control still name the window properly.
+        window?.titleVisibility = .hidden
     }
 
     // ───────────────────────────────────────────────
@@ -278,10 +283,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // ───────────────────────────────────────────────
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        // Back/forward sits directly left of the path, so the control that
-        // changes the location reads as attached to the location it shows.
-        [.init("ViewMode"), .flexibleSpace,
-         .init("BackForward"), .init("PathLabel"), .flexibleSpace,
+        // Back/forward leads, in the corner the title used to occupy — the
+        // same place browsers and Finder put navigation.
+        [.init("BackForward"), .init("ViewMode"), .flexibleSpace,
+         .init("PathLabel"), .flexibleSpace,
          .init("NewFolder")]
     }
 
