@@ -1,0 +1,7 @@
+/* R2 Finder services — es */
+
+
+/* MARK: service */
+"service.7zzExit" = "7zz salió con código %d";
+"service.deleteFailed" = "no se pudo eliminar: %@";
+"service.rsyncExit" = "rsync salió con código %d";

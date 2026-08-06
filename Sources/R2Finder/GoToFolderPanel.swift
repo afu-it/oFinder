@@ -14,16 +14,16 @@ enum GoToFolderPanel {
     static func runAsSheet(on window: NSWindow?,
                            completionHandler handler: @escaping @MainActor (String?) -> Void) {
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
-        field.placeholderString = "~/Documentos  o  /usr/local/bin"
+        field.placeholderString = L10n.t("goTo.placeholder", "~/Documents  or  /usr/local/bin")
         field.font = .systemFont(ofSize: 13)
         (field.cell as? NSTextFieldCell)?.isScrollable = true
         field.stringValue = NSHomeDirectory()
 
         let alert = NSAlert()
-        alert.messageText = "Ir a la carpeta"
-        alert.informativeText = "Escribe la ruta a la que deseas navegar:"
-        alert.addButton(withTitle: "Ir")
-        alert.addButton(withTitle: "Cancelar")
+        alert.messageText = L10n.t("goTo.title", "Go to Folder")
+        alert.informativeText = L10n.t("goTo.prompt", "Type the path you want to go to:")
+        alert.addButton(withTitle: L10n.t("button.go", "Go"))
+        alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
         alert.accessoryView = field
 
         func finish(_ response: NSApplication.ModalResponse) {
@@ -50,8 +50,11 @@ enum GoToFolderPanel {
         let exists = FileManager.default.fileExists(atPath: resolved, isDirectory: &isDir)
         guard exists, isDir.boolValue else {
             let err = NSAlert()
-            err.messageText = "Carpeta no encontrada"
-            err.informativeText = "La ruta '\(resolved)' no existe o no es una carpeta."
+            err.messageText = L10n.t("goTo.notFoundTitle", "Folder not found")
+            err.informativeText = L10n.f(
+                "goTo.notFoundBody",
+                "The path '%@' does not exist or is not a folder.",
+                resolved)
             err.alertStyle = .critical
             err.runModal()
             return nil

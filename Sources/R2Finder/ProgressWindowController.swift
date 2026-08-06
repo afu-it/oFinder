@@ -12,14 +12,15 @@ final class ProgressWindowController: NSWindowController {
     private let progressBar = NSProgressIndicator()
     private let titleLabel: NSTextField
     private let detailLabel: NSTextField
-    private let speedLabel = NSTextField(labelWithString: "Calculando…")
+    private let speedLabel = NSTextField(labelWithString: L10n.t("progress.calculating", "Calculating…"))
     private var cancelButton: NSButton!
 
     init(title: String, destinationFolder dst: String, refreshCallback: @escaping () -> Void) {
         self.refreshCallback = refreshCallback
         operationTitle = title
         titleLabel = NSTextField(labelWithString: "\(title)…")
-        detailLabel = NSTextField(labelWithString: "Destino: \(dst)")
+        detailLabel = NSTextField(
+            labelWithString: L10n.f("progress.destination", "Destination: %@", dst))
 
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 160),
                            styleMask: [.titled, .closable],
@@ -68,7 +69,7 @@ final class ProgressWindowController: NSWindowController {
         cv.addSubview(speedLabel)
 
         // Cancel
-        cancelButton = NSButton(title: "Cancelar", target: self, action: #selector(cancelClicked(_:)))
+        cancelButton = NSButton(title: L10n.t("button.cancel", "Cancel"), target: self, action: #selector(cancelClicked(_:)))
         cancelButton.translatesAutoresizingMaskIntoConstraints = false
         cv.addSubview(cancelButton)
 
@@ -108,7 +109,7 @@ final class ProgressWindowController: NSWindowController {
                 progressBar.startAnimation(nil)
             }
             let sizeStr = total > 0 ? formattedSize(total) : formattedSize(bytesDone)
-            speedLabel.stringValue = "\(sizeStr)   Sincronizando…"
+            speedLabel.stringValue = L10n.f("progress.syncing", "%@   Syncing…", sizeStr)
             return
         }
 
@@ -134,9 +135,9 @@ final class ProgressWindowController: NSWindowController {
         } else {
             progressBar.isIndeterminate = true
             progressBar.startAnimation(nil)
-            titleLabel.stringValue = "Error en la operación"
-            speedLabel.stringValue = msg ?? "Error desconocido"
-            cancelButton.title = "Cerrar"
+            titleLabel.stringValue = L10n.t("progress.failedTitle", "Operation failed")
+            speedLabel.stringValue = msg ?? L10n.t("progress.unknownError", "Unknown error")
+            cancelButton.title = L10n.t("button.close", "Close")
         }
     }
 

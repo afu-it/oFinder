@@ -4,8 +4,19 @@
 import Foundation
 
 public struct VolumeEntry {
+    /// Display name. For special directories this is the untranslated English
+    /// label; callers showing it to the user should localize via `key`.
     public var name: String
     public var path: String
+    /// Stable identifier for well-known directories ("home", "desktop", …).
+    /// nil for mounted volumes, whose name comes from the filesystem.
+    public var key: String?
+
+    public init(name: String, path: String, key: String? = nil) {
+        self.name = name
+        self.path = path
+        self.key = key
+    }
 }
 
 public enum VolumeService {
@@ -27,18 +38,19 @@ public enum VolumeService {
     }
 
     /// Well-known user directories, only those that exist.
-    /// Display names stay in Spanish to match the rest of the UI.
+    /// Each carries a stable `key` so the UI can localize the label without
+    /// the identifier shifting language with it.
     public static func specialDirs() -> [VolumeEntry] {
         let home = NSHomeDirectory()
-        let dirs: [(name: String, rel: String)] = [
-            ("Inicio", ""),
-            ("Escritorio", "/Desktop"),
-            ("Documentos", "/Documents"),
-            ("Descargas", "/Downloads"),
-            ("Música", "/Music"),
-            ("Imágenes", "/Pictures"),
-            ("Películas", "/Movies"),
-            ("Aplicaciones", "/Applications"),
+        let dirs: [(key: String, name: String, rel: String)] = [
+            ("home", "Home", ""),
+            ("desktop", "Desktop", "/Desktop"),
+            ("documents", "Documents", "/Documents"),
+            ("downloads", "Downloads", "/Downloads"),
+            ("music", "Music", "/Music"),
+            ("pictures", "Pictures", "/Pictures"),
+            ("movies", "Movies", "/Movies"),
+            ("applications", "Applications", "/Applications"),
         ]
         var result: [VolumeEntry] = []
         for d in dirs {
@@ -46,7 +58,7 @@ public enum VolumeService {
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: full, isDirectory: &isDir),
                   isDir.boolValue else { continue }
-            result.append(VolumeEntry(name: d.name, path: full))
+            result.append(VolumeEntry(name: d.name, path: full, key: d.key))
         }
         return result
     }
