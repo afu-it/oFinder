@@ -115,20 +115,33 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         isSplit ? mergePanes() : splitPane()
     }
 
-    private func splitPane() {
+    private func splitPane(adopting tab: BrowserTab? = nil, onLeft: Bool = false) {
         guard !isSplit else { return }
-        // The new pane opens where the current one is looking. Starting it at
-        // home would throw away the context the split was opened for — the
-        // usual reason to split is to move something out of here.
-        let pane = makePane(path: activePane.activeTab.currentPath)
-        panes.append(pane)
+        // Without a tab to carry over, the new pane opens where the current one
+        // is looking. Starting it at home would throw away the context the
+        // split was opened for — the usual reason to split is to move
+        // something out of here.
+        let pane: PaneViewController
+        if let tab {
+            pane = PaneViewController(adopting: tab)
+            pane.delegate = self
+        } else {
+            pane = makePane(path: activePane.activeTab.currentPath)
+        }
 
         let item = NSSplitViewItem(viewController: pane)
         item.minimumThickness = 250
-        splitVC.addSplitViewItem(item)
+        // Split view item 0 is the sidebar, so the content panes start at 1.
+        if onLeft {
+            panes.insert(pane, at: 0)
+            splitVC.insertSplitViewItem(item, at: 1)
+        } else {
+            panes.append(pane)
+            splitVC.addSplitViewItem(item)
+        }
 
         for pane in panes { pane.showsActiveBorder = true }
-        setActivePane(1)
+        setActivePane(panes.firstIndex(where: { $0 === pane }) ?? 0)
     }
 
     private func mergePanes() {
@@ -373,6 +386,31 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         guard let index = panes.firstIndex(where: { $0 === pane }),
               index != activePaneIndex else { return }
         setActivePane(index)
+    }
+
+    /// Dragging a tab off the side of a pane splits the window and takes the
+    /// tab with it; when the window is already split, it hands the tab to the
+    /// other side.
+    func pane(_ pane: PaneViewController, didDragTab index: Int, toEdge edge: NSRectEdge) {
+        guard let source = panes.firstIndex(where: { $0 === pane }) else { return }
+
+        if isSplit {
+            let destination = source == 0 ? 1 : 0
+            // Only when the drag heads away from the destination's own side is
+            // it a move; dragging left in the left pane means nothing.
+            let wantsRight = edge == .maxX
+            guard (destination == 1) == wantsRight else { return }
+            guard let tab = pane.detachTab(at: index) else { return }
+            panes[destination].adopt(tab)
+            setActivePane(destination)
+            return
+        }
+
+        // A pane holding a single tab has nothing to give away: splitting and
+        // emptying it would leave half the window blank. Split anyway — the
+        // gesture plainly means "two panes" — just without moving anything.
+        let tab = pane.tabs.count > 1 ? pane.detachTab(at: index) : nil
+        splitPane(adopting: tab, onLeft: edge == .minX)
     }
 
     func paneDidCloseLastTab(_ pane: PaneViewController) {

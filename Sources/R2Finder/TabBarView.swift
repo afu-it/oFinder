@@ -8,6 +8,7 @@ protocol TabBarViewDelegate: AnyObject {
     func tabBar(_ bar: TabBarView, didSelect index: Int)
     func tabBar(_ bar: TabBarView, didClose index: Int)
     func tabBar(_ bar: TabBarView, didMove from: Int, to: Int)
+    func tabBar(_ bar: TabBarView, didDragTab index: Int, toEdge edge: NSRectEdge)
     func tabBarDidRequestNewTab(_ bar: TabBarView)
 }
 
@@ -23,6 +24,9 @@ final class TabBarView: NSView {
 
     private(set) var titles: [String] = []
     private(set) var selectedIndex = 0
+    /// One split per drag. Without this the pointer sitting near the edge
+    /// fires on every mouse-moved event and the window splits repeatedly.
+    private var edgeSignalled = false
 
     private let stack = NSStackView()
     private let addButton = HoverButton(
@@ -30,8 +34,12 @@ final class TabBarView: NSView {
         accessibilityDescription: L10n.t("tab.new", "New Tab"))
 
     static let height: CGFloat = 28
-    private static let minTabWidth: CGFloat = 68
-    private static let maxTabWidth: CGFloat = 132
+    private static let minTabWidth: CGFloat = 50
+    private static let maxTabWidth: CGFloat = 110
+    /// How close to the pane's edge a dragged tab must get to mean "split
+    /// here" rather than "reorder". Wide enough to be reachable without
+    /// precision, narrow enough that dragging within a wide strip is safe.
+    private static let edgeMargin: CGFloat = 60
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -135,10 +143,32 @@ extension TabBarView: TabItemViewDelegate {
     /// Reorder is resolved here, in view space, because the drop target is
     /// "which gap did the cursor land in" — a question only the strip can
     /// answer, and one the model has no business knowing about.
+    ///
+    /// A drag that leaves the strip and reaches the edge of the pane means
+    /// something else entirely: split, and take this tab with you.
     func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint) {
         let items = stack.arrangedSubviews.compactMap { $0 as? TabItemView }
-        guard let target = items.first(where: { $0.frame.contains(pointInBar) }),
-              target.index != item.index else { return }
-        delegate?.tabBar(self, didMove: item.index, to: target.index)
+        if let target = items.first(where: { $0.frame.contains(pointInBar) }) {
+            guard target.index != item.index else { return }
+            delegate?.tabBar(self, didMove: item.index, to: target.index)
+            return
+        }
+
+        // The strip only spans its tabs, so edges are measured against the
+        // pane it sits in — otherwise a drag just past the last tab would
+        // count as reaching the far side of the window.
+        guard !edgeSignalled, let host = superview else { return }
+        let point = convert(pointInBar, to: host)
+        if point.x > host.bounds.maxX - Self.edgeMargin {
+            edgeSignalled = true
+            delegate?.tabBar(self, didDragTab: item.index, toEdge: .maxX)
+        } else if point.x < host.bounds.minX + Self.edgeMargin {
+            edgeSignalled = true
+            delegate?.tabBar(self, didDragTab: item.index, toEdge: .minX)
+        }
+    }
+
+    func tabItemDragEnded(_ item: TabItemView) {
+        edgeSignalled = false
     }
 }

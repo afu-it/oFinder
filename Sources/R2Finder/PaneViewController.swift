@@ -46,6 +46,8 @@ protocol PaneViewControllerDelegate: AnyObject {
     func paneDidBecomeActive(_ pane: PaneViewController)
     /// The last tab was closed.
     func paneDidCloseLastTab(_ pane: PaneViewController)
+    /// A tab was dragged past the pane's left or right edge.
+    func pane(_ pane: PaneViewController, didDragTab index: Int, toEdge edge: NSRectEdge)
 }
 
 final class PaneViewController: NSViewController, TabBarViewDelegate,
@@ -77,6 +79,31 @@ final class PaneViewController: NSViewController, TabBarViewDelegate,
     init(path: String) {
         super.init(nibName: nil, bundle: nil)
         tabs = [BrowserTab(path: path)]
+    }
+
+    /// Starts the pane with a tab taken from somewhere else, so a tab dragged
+    /// out to create a split carries its own history across instead of being
+    /// re-opened from scratch.
+    init(adopting tab: BrowserTab) {
+        super.init(nibName: nil, bundle: nil)
+        tabs = [tab]
+    }
+
+    /// Removes a tab and hands it over, or nil if it is the pane's last one —
+    /// a pane with no tabs has nothing to draw and no location to report.
+    func detachTab(at index: Int) -> BrowserTab? {
+        guard tabs.count > 1, tabs.indices.contains(index) else { return nil }
+        let tab = tabs[index]
+        tab.fileVC.view.removeFromSuperview()
+        tab.fileVC.removeFromParent()
+        tabs.remove(at: index)
+        select(index: min(index, tabs.count - 1))
+        return tab
+    }
+
+    func adopt(_ tab: BrowserTab) {
+        tabs.append(tab)
+        select(index: tabs.count - 1)
     }
 
     @available(*, unavailable)
@@ -231,6 +258,10 @@ final class PaneViewController: NSViewController, TabBarViewDelegate,
 
     func tabBar(_ bar: TabBarView, didMove from: Int, to: Int) {
         moveTab(from: from, to: to)
+    }
+
+    func tabBar(_ bar: TabBarView, didDragTab index: Int, toEdge edge: NSRectEdge) {
+        delegate?.pane(self, didDragTab: index, toEdge: edge)
     }
 
     func tabBarDidRequestNewTab(_ bar: TabBarView) {

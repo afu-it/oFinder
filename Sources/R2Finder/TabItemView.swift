@@ -8,6 +8,7 @@ protocol TabItemViewDelegate: AnyObject {
     func tabItemClicked(_ item: TabItemView)
     func tabItemCloseClicked(_ item: TabItemView)
     func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint)
+    func tabItemDragEnded(_ item: TabItemView)
 }
 
 final class TabItemView: NSView {
@@ -102,5 +103,6 @@ final class TabItemView: NSView {
     override func mouseUp(with event: NSEvent) {
         pressOrigin = nil
         didDrag = false
+        delegate?.tabItemDragEnded(self)
     }
 }
