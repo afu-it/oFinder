@@ -96,8 +96,10 @@ final class PathBarView: NSView, NSTextFieldDelegate {
             // macOS draws around it instead of hugging one edge.
             stack.centerXAnchor.constraint(equalTo: centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 4),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -4),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor,
+                                           constant: Self.horizontalPadding),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor,
+                                            constant: -Self.horizontalPadding),
 
             field.leadingAnchor.constraint(equalTo: leadingAnchor),
             field.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -119,7 +121,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
             width = (field.stringValue as NSString).size(withAttributes: attributes).width
                 + Self.fieldPadding
         } else {
-            width = stack.fittingSize.width + 8
+            width = stack.fittingSize.width + Self.horizontalPadding * 2
         }
         // The ceiling follows the window rather than being a fixed number, so
         // a deep path keeps expanding as long as there is room, and only
@@ -160,6 +162,12 @@ final class PathBarView: NSView, NSTextFieldDelegate {
 
     /// Bezel inset plus room for the caret at the end of the text.
     private static let fieldPadding: CGFloat = 22
+
+    /// Space between the crumbs and the edge of the capsule macOS draws around
+    /// the item. The capsule is exactly as wide as this view reports, so any
+    /// inset has to be built into that width — there is nothing else to pad
+    /// against.
+    private static let horizontalPadding: CGFloat = 12
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: – Content

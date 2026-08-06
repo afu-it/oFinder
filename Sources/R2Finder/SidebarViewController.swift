@@ -27,6 +27,20 @@ private final class SidebarItem {
     var capacity: VolumeCapacity?
     var children: [SidebarItem] = []
 
+    /// Height of a blank separating row, or nil for a real entry.
+    var spacerHeight: CGFloat?
+
+    /// A gap, not a destination. Trash sits below the volumes and reads as one
+    /// more of them when it butts up against the list; the space is what says
+    /// it is something else.
+    init(spacerHeight: CGFloat) {
+        name = ""
+        path = nil
+        icon = nil
+        isHeader = false
+        self.spacerHeight = spacerHeight
+    }
+
     init(header title: String) {
         name = title
         path = nil
@@ -206,6 +220,8 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         sections.append(volHeader)
 
         // ── Network ───────────────────────────────────────────────────────
+        sections.append(SidebarItem(spacerHeight: 18))
+
         // ── Trash ─────────────────────────────────────────────────────────
         // Headerless and last, mirroring Recents at the top: both are single
         // destinations rather than groups, and Trash belongs at the end
@@ -340,7 +356,9 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     /// Volume rows carry a capacity bar and a free-space line under the name,
     /// so they need more room than a plain row.
     func outlineView(_ ov: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
-        (item as? SidebarItem)?.capacity != nil ? 42 : ov.rowHeight
+        guard let si = item as? SidebarItem else { return ov.rowHeight }
+        if let spacerHeight = si.spacerHeight { return spacerHeight }
+        return si.capacity != nil ? 42 : ov.rowHeight
     }
 
     private func volumeCell(for si: SidebarItem, capacity: VolumeCapacity,
@@ -361,11 +379,14 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     }
 
     func outlineView(_ ov: NSOutlineView, shouldSelectItem item: Any) -> Bool {
-        (item as? SidebarItem)?.isHeader == false
+        guard let si = item as? SidebarItem else { return false }
+        return !si.isHeader && si.spacerHeight == nil
     }
 
     func outlineView(_ ov: NSOutlineView, viewFor col: NSTableColumn?, item: Any) -> NSView? {
         guard let si = item as? SidebarItem else { return nil }
+
+        if si.spacerHeight != nil { return NSView() }
 
         if si.isHeader {
             let identifier = NSUserInterfaceItemIdentifier("HeaderCell")
