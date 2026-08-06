@@ -134,13 +134,7 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         if RecentsService.isRecents(path) {
             return [PathCrumb(title: L10n.t("sidebar.recents", "Recents"), path: path)]
         }
-        return PathCrumbs.split(path: path, rootVolumeName: volumeName(of: "/"))
-    }
-
-    private func volumeName(of path: String) -> String {
-        (try? URL(fileURLWithPath: path)
-            .resourceValues(forKeys: [.volumeNameKey]))?.volumeName
-            ?? (path as NSString).lastPathComponent
+        return PathCrumbs.split(path: path)
     }
 
     private func rebuildCrumbs() {

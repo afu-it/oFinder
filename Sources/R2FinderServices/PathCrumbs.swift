@@ -16,39 +16,37 @@ public struct PathCrumb: Equatable {
 }
 
 public enum PathCrumbs {
-    /// Breaks a path into crumbs, leading with the volume rather than with an
-    /// empty segment.
+    /// Breaks a path into crumbs.
     ///
-    /// `/Users/afwazan` is three components to the filesystem — "", "Users",
-    /// "afwazan" — and two places plus a disk to a person. The root becomes
-    /// the volume's name, and a path on a mounted volume starts at that
-    /// volume instead of showing "Volumes" as a folder anyone navigates
-    /// through.
+    /// The boot volume contributes no crumb of its own. Its name is long, it
+    /// is the same on every path, and it pushed the parts that differ off the
+    /// end of the bar — so `/Users/afwazan` reads as "Users / afwazan". The
+    /// root on its own still needs something to stand for it, and "/" is both
+    /// short and exactly what it is.
     ///
-    /// `rootVolumeName` is passed in rather than looked up so this stays pure;
-    /// the caller reads it from the filesystem once.
-    public static func split(path: String, rootVolumeName: String) -> [PathCrumb] {
-        var crumbs: [PathCrumb] = []
-        var rootPath = "/"
-        var remainder = path
-
+    /// A mounted volume does keep its name as the leading crumb: there it
+    /// carries real information, and "Volumes" is not a folder anyone
+    /// navigates through.
+    public static func split(path: String) -> [PathCrumb] {
         let parts = path.split(separator: "/").map(String.init)
 
-        // "/Volumes" itself is a real directory, so it only collapses into a
-        // volume crumb when there is a volume named after it.
         if parts.first == "Volumes", parts.count >= 2 {
-            rootPath = "/Volumes/" + parts[1]
-            crumbs.append(PathCrumb(title: parts[1], path: rootPath))
-            remainder = parts.dropFirst(2).joined(separator: "/")
-        } else {
-            crumbs.append(PathCrumb(title: rootVolumeName, path: "/"))
-            remainder = parts.joined(separator: "/")
+            var accumulated = "/Volumes/" + parts[1]
+            var crumbs = [PathCrumb(title: parts[1], path: accumulated)]
+            for part in parts.dropFirst(2) {
+                accumulated += "/" + part
+                crumbs.append(PathCrumb(title: part, path: accumulated))
+            }
+            return crumbs
         }
 
-        var accumulated = rootPath == "/" ? "" : rootPath
-        for part in remainder.split(separator: "/") {
+        guard !parts.isEmpty else { return [PathCrumb(title: "/", path: "/")] }
+
+        var accumulated = ""
+        var crumbs: [PathCrumb] = []
+        for part in parts {
             accumulated += "/" + part
-            crumbs.append(PathCrumb(title: String(part), path: accumulated))
+            crumbs.append(PathCrumb(title: part, path: accumulated))
         }
         return crumbs
     }

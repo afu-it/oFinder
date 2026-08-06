@@ -6,42 +6,42 @@ import XCTest
 final class PathCrumbsTests: XCTestCase {
 
     private func titles(_ path: String) -> [String] {
-        PathCrumbs.split(path: path, rootVolumeName: "Macintosh HD").map(\.title)
+        PathCrumbs.split(path: path).map(\.title)
     }
 
     private func paths(_ path: String) -> [String] {
-        PathCrumbs.split(path: path, rootVolumeName: "Macintosh HD").map(\.path)
+        PathCrumbs.split(path: path).map(\.path)
     }
 
-    func testRootIsTheVolumeName() {
-        XCTAssertEqual(titles("/"), ["Macintosh HD"])
+    func testRootStandsForItself() {
+        XCTAssertEqual(titles("/"), ["/"])
         XCTAssertEqual(paths("/"), ["/"])
     }
 
-    func testOrdinaryPath() {
-        XCTAssertEqual(titles("/Users/afwazan/Desktop"),
-                       ["Macintosh HD", "Users", "afwazan", "Desktop"])
+    func testBootVolumeContributesNoCrumb() {
+        // Its name is the same on every path and only takes up room.
+        XCTAssertEqual(titles("/Users/afwazan/Desktop"), ["Users", "afwazan", "Desktop"])
         XCTAssertEqual(paths("/Users/afwazan/Desktop"),
-                       ["/", "/Users", "/Users/afwazan", "/Users/afwazan/Desktop"])
+                       ["/Users", "/Users/afwazan", "/Users/afwazan/Desktop"])
     }
 
     func testTrailingAndRepeatedSeparatorsAreIgnored() {
-        XCTAssertEqual(titles("/Users/afwazan/"), ["Macintosh HD", "Users", "afwazan"])
-        XCTAssertEqual(titles("//Users//afwazan"), ["Macintosh HD", "Users", "afwazan"])
+        XCTAssertEqual(titles("/Users/afwazan/"), ["Users", "afwazan"])
+        XCTAssertEqual(titles("//Users//afwazan"), ["Users", "afwazan"])
     }
 
-    func testMountedVolumeLeadsWithTheVolume() {
-        // "Volumes" is not a place anyone navigates through, so it does not
-        // appear as a crumb of its own.
+    func testMountedVolumeKeepsItsName() {
+        // Here the volume carries real information, and "Volumes" is not a
+        // folder anyone navigates through.
         XCTAssertEqual(titles("/Volumes/Shuffle/Photos"), ["Shuffle", "Photos"])
         XCTAssertEqual(paths("/Volumes/Shuffle/Photos"),
                        ["/Volumes/Shuffle", "/Volumes/Shuffle/Photos"])
     }
 
     func testVolumesDirectoryItselfIsStillADirectory() {
-        // With nothing after it there is no volume to lead with, so it is just
-        // a folder on the boot disk.
-        XCTAssertEqual(titles("/Volumes"), ["Macintosh HD", "Volumes"])
+        // With nothing after it there is no volume to lead with.
+        XCTAssertEqual(titles("/Volumes"), ["Volumes"])
+        XCTAssertEqual(paths("/Volumes"), ["/Volumes"])
     }
 
     func testNamesContainingSpaces() {
