@@ -79,13 +79,11 @@ final class VolumeCellView: NSTableCellView {
             freeLabel.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
             freeLabel.topAnchor.constraint(equalTo: bar.bottomAnchor, constant: 2),
 
-            // Pinned to the row's right edge, on the bar's line. Keeping the
-            // number level with the bar lets the eye read fill and figure
-            // together, and leaves the caption a clear line of its own.
+            // Same line as the free-space text, pushed to the row's right
+            // edge. Sharing a baseline keeps the two figures reading as one
+            // caption; the gap between them is what separates them.
             percentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            percentLabel.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            percentLabel.leadingAnchor.constraint(greaterThanOrEqualTo: bar.trailingAnchor,
-                                                  constant: 6),
+            percentLabel.firstBaselineAnchor.constraint(equalTo: freeLabel.firstBaselineAnchor),
             freeLabel.trailingAnchor.constraint(lessThanOrEqualTo: percentLabel.leadingAnchor,
                                                 constant: -6),
         ])
