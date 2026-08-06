@@ -165,3 +165,4 @@
 "action.copyAsPath" = "Copy as Path";
 "sidebar.cloud" = "CLOUD";
 "sidebar.trash" = "Trash";
+"status.unreadable" = "Can't read this folder — grant Full Disk Access in System Settings";

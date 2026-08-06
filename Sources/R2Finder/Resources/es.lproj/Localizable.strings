@@ -165,3 +165,4 @@
 "action.copyAsPath" = "Copiar como ruta";
 "sidebar.cloud" = "NUBE";
 "sidebar.trash" = "Papelera";
+"status.unreadable" = "No se puede leer esta carpeta — concede Acceso total al disco en Ajustes";

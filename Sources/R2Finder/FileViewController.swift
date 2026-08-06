@@ -100,6 +100,8 @@ final class FileViewController: NSViewController {
     // stale value is harmless (the main-actor guard re-checks on delivery).
     private nonisolated(unsafe) var loadGeneration = 0
     private var isLoading = false
+    /// The last load was refused rather than returning nothing.
+    private var currentLocationUnreadable = false
 
     // FSEvents — nonisolated(unsafe) so deinit (nonisolated) can clean up;
     // both are otherwise only touched on the main actor.
@@ -413,7 +415,9 @@ final class FileViewController: NSViewController {
         let showHidden = Self.showHidden
 
         loadQueue.async { [weak self] in
-            let newEntries = Self.entriesList(forPath: path, showHidden: showHidden)
+            let listed = Self.entriesList(forPath: path, showHidden: showHidden)
+            let unreadable = listed == nil
+            let newEntries = listed ?? []
 
             // Assign cheap placeholder icons synchronously (no I/O) so the UI
             // can render immediately. Real per-file icons are fetched
@@ -431,6 +435,7 @@ final class FileViewController: NSViewController {
 
                 self.isLoading = false
                 self.loadingSpinner.stopAnimation(nil)
+                self.currentLocationUnreadable = unreadable
 
                 // On an in-place refresh (FSEvents during a transfer or
                 // extraction), carry over the already-loaded icons by path —
@@ -487,12 +492,16 @@ final class FileViewController: NSViewController {
     ///
     /// Recents is a query, not a directory, so it bypasses DirectoryLister —
     /// and it ignores `showHidden`, since the query never returns dotfiles.
-    nonisolated static func entriesList(forPath path: String, showHidden: Bool) -> [FileEntry] {
+    /// Returns nil when the location cannot be read at all, which is not the
+    /// same as it being empty — ~/.Trash and the other TCC-protected folders
+    /// refuse to open until the app is granted Full Disk Access, and an empty
+    /// list there says "nothing here" when the truth is "not allowed to look".
+    nonisolated static func entriesList(forPath path: String, showHidden: Bool) -> [FileEntry]? {
         let listed: [DirEntry]
         if RecentsService.isRecents(path) {
             listed = RecentsService.list()
         } else {
-            guard let dir = DirectoryLister.list(path: path) else { return [] }
+            guard let dir = DirectoryLister.list(path: path) else { return nil }
             listed = dir
         }
         return listed.compactMap { e in
@@ -586,6 +595,12 @@ final class FileViewController: NSViewController {
             statusLabel.stringValue = L10n.t("progress.loading", "Loading…")
             return
         }
+        if currentLocationUnreadable {
+            statusLabel.stringValue = L10n.t(
+                "status.unreadable",
+                "Can't read this folder — grant Full Disk Access in System Settings")
+            return
+        }
         let folders = entries.lazy.filter(\.isDir).count
         let files = entries.count - folders
         let folderStr = folders == 1
@@ -605,7 +620,7 @@ final class FileViewController: NSViewController {
                            completion: @escaping @MainActor ([FileEntry]) -> Void) {
         let showHidden = Self.showHidden
         loadQueue.async {
-            let result = Self.entriesList(forPath: path, showHidden: showHidden)
+            let result = Self.entriesList(forPath: path, showHidden: showHidden) ?? []
             let ws = NSWorkspace.shared
             for fe in result {
                 let icon = ws.icon(forFile: fe.path)
@@ -642,7 +657,7 @@ final class FileViewController: NSViewController {
         let generation = loadGeneration
 
         loadQueue.async { [weak self] in
-            let children = Self.entriesList(forPath: path, showHidden: showHidden)
+            let children = Self.entriesList(forPath: path, showHidden: showHidden) ?? []
 
             // Cheap placeholders (no I/O); fillIcons replaces them off-main.
             let folderPlaceholder = NSImage(named: NSImage.folderName)
