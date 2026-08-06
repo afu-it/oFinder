@@ -173,3 +173,8 @@
 "trash.emptyTitle" = "¿Borrar permanentemente los elementos de la papelera?";
 "trash.emptyBody" = "No puedes deshacer esta acción.";
 "trash.emptyFailed" = "No se pudo vaciar la papelera";
+"action.restore" = "Restaurar";
+"action.deleteImmediately" = "Eliminar inmediatamente";
+"restore.failedTitle" = "Algunos elementos no se restauraron";
+"restore.noRecord" = "No hay registro de su origen: %@";
+"restore.blocked" = "Ya hay algo en el camino de: %@";

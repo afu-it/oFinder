@@ -839,6 +839,71 @@ final class FileViewController: NSViewController {
     /// Separate from Copy, which puts the files themselves there: pasting into
     /// a folder should move file data, and pasting into a terminal should give
     /// you something to type after `cd`. One clipboard cannot mean both.
+    /// Puts trashed items back where they came from.
+    ///
+    /// The original folder is often gone too — people clear a project by
+    /// deleting the whole thing — so it is recreated rather than refused.
+    /// Refusing would fail on exactly the items someone most wants back.
+    @IBAction func restoreFromTrash(_ sender: Any?) {
+        let paths = selectedPaths()
+        guard !paths.isEmpty else { return }
+        let origins = TrashIndex.origins(trashPath: TrashService.path)
+        let fm = FileManager.default
+
+        var unknown: [String] = []
+        var blocked: [String] = []
+        for path in paths {
+            let name = (path as NSString).lastPathComponent
+            guard let target = origins[name] else { unknown.append(name); continue }
+            guard !fm.fileExists(atPath: target) else { blocked.append(name); continue }
+            let parent = (target as NSString).deletingLastPathComponent
+            try? fm.createDirectory(atPath: parent, withIntermediateDirectories: true)
+            do {
+                try fm.moveItem(atPath: path, toPath: target)
+            } catch {
+                blocked.append(name)
+            }
+        }
+        loadPath(currentPath)
+
+        guard !unknown.isEmpty || !blocked.isEmpty else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.t("restore.failedTitle", "Some items were not restored")
+        alert.informativeText = [
+            unknown.isEmpty ? nil : L10n.f("restore.noRecord",
+                                           "No record of where these came from: %@",
+                                           unknown.joined(separator: ", ")),
+            blocked.isEmpty ? nil : L10n.f("restore.blocked",
+                                           "Something is already in the way of: %@",
+                                           blocked.joined(separator: ", ")),
+        ].compactMap { $0 }.joined(separator: "\n\n")
+        alert.addButton(withTitle: L10n.t("button.ok", "OK"))
+        alert.runModal()
+    }
+
+    /// Erases without the Trash step, because these are already in it.
+    @IBAction func deleteImmediately(_ sender: Any?) {
+        let paths = selectedPaths()
+        guard !paths.isEmpty else { return }
+
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = paths.count == 1
+            ? L10n.f("delete.confirmOne", "\"%@\" will be deleted permanently.",
+                     (paths[0] as NSString).lastPathComponent)
+            : L10n.f("delete.confirmMany", "%d items will be deleted permanently.",
+                     paths.count)
+        alert.informativeText = L10n.t("trash.emptyBody", "You can't undo this action.")
+        alert.addButton(withTitle: L10n.t("action.deleteImmediately", "Delete Immediately"))
+        alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
+        alert.buttons.first?.hasDestructiveAction = true
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        for path in paths { try? FileManager.default.removeItem(atPath: path) }
+        loadPath(currentPath)
+    }
+
     @IBAction func copyPathsAsText(_ sender: Any?) {
         let paths = selectedPaths()
         guard !paths.isEmpty else { return }

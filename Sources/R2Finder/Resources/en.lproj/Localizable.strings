@@ -173,3 +173,8 @@
 "trash.emptyTitle" = "Permanently erase the items in the Trash?";
 "trash.emptyBody" = "You can't undo this action.";
 "trash.emptyFailed" = "Couldn't empty the Trash";
+"action.restore" = "Restore";
+"action.deleteImmediately" = "Delete Immediately";
+"restore.failedTitle" = "Some items were not restored";
+"restore.noRecord" = "No record of where these came from: %@";
+"restore.blocked" = "Something is already in the way of: %@";

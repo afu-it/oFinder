@@ -459,6 +459,21 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
             menu.addItem(withTitle: title, action: action, keyEquivalent: "").target = self
         }
 
+        // In the Trash almost nothing on the ordinary menu applies: renaming,
+        // compressing or adding to the sidebar something on its way out are
+        // all offers the place itself contradicts.
+        if TrashService.isTrash(currentPath) {
+            if entry != nil {
+                add(L10n.t("action.open", "Open"), #selector(openSelected(_:)))
+                add(L10n.t("action.restore", "Restore"), #selector(restoreFromTrash(_:)))
+                menu.addItem(.separator())
+                add(L10n.t("action.deleteImmediately", "Delete Immediately"),
+                    #selector(deleteImmediately(_:)))
+            }
+            menu.delegate = self
+            return menu
+        }
+
         if let entry {
             add(L10n.t("action.open", "Open"), #selector(openSelected(_:)))
             menu.addItem(.separator())
