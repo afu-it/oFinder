@@ -16,7 +16,7 @@ public enum FileService {
             do {
                 try fm.removeItem(atPath: path)
             } catch {
-                return "no se pudo eliminar: \(path)"
+                return L10n.f("service.deleteFailed", "could not delete: %@", path)
             }
         }
         return nil

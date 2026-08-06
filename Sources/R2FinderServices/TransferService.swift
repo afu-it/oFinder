@@ -105,8 +105,9 @@ public enum TransferService {
 
         guard child.exitCode == 0 else {
             let se = child.stderrText
-            onDone(false, se.isEmpty ? "rsync salió con código \(child.exitCode)"
-                                     : "rsync: \(se)")
+            onDone(false, se.isEmpty
+                ? L10n.f("service.rsyncExit", "rsync exited with code %d", child.exitCode)
+                : "rsync: \(se)")
             return
         }
 

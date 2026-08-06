@@ -50,6 +50,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleExecutable</key>        <string>rs_2finder</string>
   <key>CFBundleIconFile</key>          <string>AppIcon</string>
+  <key>CFBundleDevelopmentRegion</key> <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>es</string>
+  </array>
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>CFBundleSignature</key>         <string>????</string>
   <key>LSMinimumSystemVersion</key>    <string>13.0</string>
@@ -70,4 +76,18 @@ cp bin/7zz       "$APP/Contents/Resources/7zz"
 cp bin/rsync     "$APP/Contents/Resources/rsync"
 chmod 755 "$APP/Contents/Resources/7zz" "$APP/Contents/Resources/rsync"
 
-echo "OK: $APP (version ${VERSION})"
+# 4) SwiftPM resource bundles (Localizable.strings for each target).
+#    Bundle.module resolves these by looking in Bundle.main.resourceURL,
+#    which for an .app is Contents/Resources — so a plain copy is enough.
+shopt -s nullglob
+bundles=(".build/${CONFIG}/"*.bundle)
+if (( ${#bundles[@]} == 0 )); then
+    echo "error: no .bundle found in .build/${CONFIG} – localization would be missing" >&2
+    exit 1
+fi
+for b in "${bundles[@]}"; do
+    cp -R "$b" "$APP/Contents/Resources/"
+done
+shopt -u nullglob
+
+echo "OK: $APP (version ${VERSION}, ${#bundles[@]} resource bundle(s))"

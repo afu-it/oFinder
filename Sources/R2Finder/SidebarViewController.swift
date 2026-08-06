@@ -77,7 +77,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     // (nonisolated) needs to stop it.
     private nonisolated(unsafe) var smbBrowser: NetServiceBrowser?
     private var discoveredServices: [NetService] = []
-    private var networkHeader = SidebarItem(header: "RED")
+    private var networkHeader = SidebarItem(header: L10n.t("sidebar.network", "NETWORK"))
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 600))
@@ -133,21 +133,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         sections = []
 
         // ── Favourites ────────────────────────────────────────────────────
-        let favHeader = SidebarItem(header: "FAVORITOS")
+        let favHeader = SidebarItem(header: L10n.t("sidebar.favorites", "FAVORITES"))
         for special in VolumeService.specialDirs() {
+            let key = special.key ?? ""
             favHeader.children.append(SidebarItem(
-                name: special.name, path: special.path,
-                icon: iconForSpecialDir(special.name, defaultPath: special.path)))
+                name: L10n.t("sidebar.\(key)", special.name), path: special.path,
+                icon: iconForSpecialDir(key, defaultPath: special.path)))
         }
         sections.append(favHeader)
 
         // ── Devices / Volumes ─────────────────────────────────────────────
-        let volHeader = SidebarItem(header: "DISPOSITIVOS")
+        let volHeader = SidebarItem(header: L10n.t("sidebar.devices", "DEVICES"))
         populateVolumes(volHeader)
         sections.append(volHeader)
 
         // ── Network ───────────────────────────────────────────────────────
-        networkHeader = SidebarItem(header: "RED")
+        networkHeader = SidebarItem(header: L10n.t("sidebar.network", "NETWORK"))
         sections.append(networkHeader)
         startNetworkDiscovery()
     }
@@ -169,20 +170,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         }
     }
 
+    /// Keyed by VolumeEntry.key, not by display name — the label is
+    /// translated, the identifier is not.
     private static let specialDirSymbols: [String: String] = [
-        "Inicio": "house",
-        "Escritorio": "desktopcomputer",
-        "Documentos": "doc",
-        "Descargas": "arrow.down.circle",
-        "Música": "music.note",
-        "Imágenes": "photo",
-        "Películas": "film",
-        "Aplicaciones": "square.grid.2x2",
+        "home": "house",
+        "desktop": "desktopcomputer",
+        "documents": "doc",
+        "downloads": "arrow.down.circle",
+        "music": "music.note",
+        "pictures": "photo",
+        "movies": "film",
+        "applications": "square.grid.2x2",
     ]
 
-    private func iconForSpecialDir(_ name: String, defaultPath path: String) -> NSImage {
-        if let sym = Self.specialDirSymbols[name],
-           let img = NSImage(systemSymbolName: sym, accessibilityDescription: name) {
+    private func iconForSpecialDir(_ key: String, defaultPath path: String) -> NSImage {
+        if let sym = Self.specialDirSymbols[key],
+           let img = NSImage(systemSymbolName: sym, accessibilityDescription: key) {
             return img
         }
         return NSWorkspace.shared.icon(forFile: path)

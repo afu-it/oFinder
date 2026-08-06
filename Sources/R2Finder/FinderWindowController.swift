@@ -172,8 +172,8 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             // selectedSegment (0 or 1). No toggle confusion.
             let control = NSSegmentedControl(
                 images: [
-                    NSImage(systemSymbolName: "chevron.left", accessibilityDescription: "Atrás")!,
-                    NSImage(systemSymbolName: "chevron.right", accessibilityDescription: "Adelante")!,
+                    NSImage(systemSymbolName: "chevron.left", accessibilityDescription: L10n.t("toolbar.back", "Back"))!,
+                    NSImage(systemSymbolName: "chevron.right", accessibilityDescription: L10n.t("toolbar.forward", "Forward"))!,
                 ],
                 trackingMode: .momentary,
                 target: self,
@@ -190,9 +190,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             let control = NSSegmentedControl()
             control.segmentCount = 3
             control.trackingMode = .selectOne
-            control.setImage(NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Iconos"), forSegment: 0)
-            control.setImage(NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Lista"), forSegment: 1)
-            control.setImage(NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "Columnas"), forSegment: 2)
+            control.setImage(NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: L10n.t("toolbar.icons", "Icons")), forSegment: 0)
+            control.setImage(NSImage(systemSymbolName: "list.bullet", accessibilityDescription: L10n.t("toolbar.list", "List")), forSegment: 1)
+            control.setImage(NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: L10n.t("toolbar.columns", "Columns")), forSegment: 2)
             control.selectedSegment = 1
             control.target = self
             control.action = #selector(viewModeAction(_:))
@@ -215,16 +215,16 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
         case "NewFolder":
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: "Nueva carpeta")
-            item.label = "Nueva carpeta"
+            item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: L10n.t("action.newFolder", "New Folder"))
+            item.label = L10n.t("action.newFolder", "New Folder")
             item.target = self
             item.action = #selector(createNewFolder(_:))
             return item
 
         case "GoToFolder":
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: "Ir a carpeta")
-            item.label = "Ir a carpeta"
+            item.image = NSImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: L10n.t("action.goToFolder", "Go to Folder"))
+            item.label = L10n.t("action.goToFolder", "Go to Folder")
             item.target = self
             item.action = #selector(goToFolderAction(_:))
             return item
