@@ -11,6 +11,7 @@ import R2FinderServices
 final class FinderWindowController: NSWindowController, NSToolbarDelegate,
                                     NSMenuItemValidation,
                                     SidebarViewControllerDelegate,
+                                    PathBarViewDelegate,
                                     PaneViewControllerDelegate {
 
     private var splitVC = NSSplitViewController()
@@ -22,7 +23,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // Toolbar items
     private var navControl: NSSegmentedControl?      // back / forward segments
     private var viewModeControl: NSSegmentedControl?
-    private var pathLabel: NSTextField?
+    private var pathBar: PathBarView?
 
     private var activePane: PaneViewController { panes[activePaneIndex] }
     private var fileVC: FileViewController { activePane.fileVC }
@@ -271,7 +272,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         let path = activePane.activeTab.currentPath
         let title = activePane.activeTab.title
         window?.title = title
-        pathLabel?.stringValue = RecentsService.isRecents(path) ? title : path
+        pathBar?.show(path: path)
         sidebarVC.highlightPath(path)
         viewModeControl?.selectedSegment = fileVC.viewMode.rawValue
         navControl?.setEnabled(activePane.activeTab.history.canGoBack, forSegment: 0)
@@ -335,14 +336,15 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
         case "PathLabel":
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            let label = NSTextField(labelWithString: "")
-            label.textColor = .secondaryLabelColor
-            label.font = .systemFont(ofSize: 12)
-            label.alignment = .center
-            label.lineBreakMode = .byTruncatingMiddle
-            label.preferredMaxLayoutWidth = 400
-            pathLabel = label
-            item.view = label
+            let bar = PathBarView(frame: .zero)
+            bar.delegate = self
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                bar.widthAnchor.constraint(greaterThanOrEqualToConstant: 220),
+                bar.heightAnchor.constraint(equalToConstant: 24),
+            ])
+            pathBar = bar
+            item.view = bar
             return item
 
         case "NewFolder":
@@ -402,6 +404,14 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         GoToFolderPanel.runAsSheet(on: window) { [weak self] path in
             if let path { self?.navigateToPath(path) }
         }
+    }
+
+    // ───────────────────────────────────────────────
+    // MARK: – PathBarViewDelegate
+    // ───────────────────────────────────────────────
+
+    func pathBar(_ bar: PathBarView, didChoose path: String) {
+        activePane.navigate(to: path)
     }
 
     // ───────────────────────────────────────────────
