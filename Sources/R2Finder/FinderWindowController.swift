@@ -282,7 +282,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         // changes the location reads as attached to the location it shows.
         [.init("ViewMode"), .flexibleSpace,
          .init("BackForward"), .init("PathLabel"), .flexibleSpace,
-         .init("NewFolder"), .init("GoToFolder")]
+         .init("NewFolder")]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -346,14 +346,6 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             item.label = L10n.t("action.newFolder", "New Folder")
             item.target = self
             item.action = #selector(createNewFolder(_:))
-            return item
-
-        case "GoToFolder":
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "arrow.right.circle", accessibilityDescription: L10n.t("action.goToFolder", "Go to Folder"))
-            item.label = L10n.t("action.goToFolder", "Go to Folder")
-            item.target = self
-            item.action = #selector(goToFolderAction(_:))
             return item
 
         default:

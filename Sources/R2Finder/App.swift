@@ -114,6 +114,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         addToSidebar.keyEquivalentModifierMask = [.command, .control]
 
         fileMenu.addItem(.separator())
+        // Shift+Cmd+G, as in Finder. Without this the only way in would be the
+        // Dock menu, which is not a place anyone looks.
+        let goToFolder = fileMenu.addItem(
+            withTitle: L10n.t("menu.goToFolderEllipsis", "Go to Folder…"),
+            action: #selector(FinderWindowController.goToFolderAction(_:)),
+            keyEquivalent: "G")
+        goToFolder.keyEquivalentModifierMask = [.command, .shift]
+
+        fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: L10n.t("tab.new", "New Tab"),
                          action: #selector(FinderWindowController.newTab(_:)),
                          keyEquivalent: "t")
