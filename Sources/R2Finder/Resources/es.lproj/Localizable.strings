@@ -115,7 +115,6 @@
 "sidebar.home" = "Inicio";
 "sidebar.movies" = "Películas";
 "sidebar.music" = "Música";
-"sidebar.network" = "RED";
 "sidebar.recents" = "Recientes";
 "sidebar.pictures" = "Imágenes";
 
@@ -164,3 +163,5 @@
 "action.openInNewSplit" = "Abrir en un panel nuevo";
 "action.openInOtherPane" = "Abrir en el otro panel";
 "action.copyAsPath" = "Copiar como ruta";
+"sidebar.cloud" = "NUBE";
+"sidebar.trash" = "Papelera";

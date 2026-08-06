@@ -115,7 +115,6 @@
 "sidebar.home" = "Home";
 "sidebar.movies" = "Movies";
 "sidebar.music" = "Music";
-"sidebar.network" = "NETWORK";
 "sidebar.recents" = "Recents";
 "sidebar.pictures" = "Pictures";
 
@@ -164,3 +163,5 @@
 "action.openInNewSplit" = "Open in New Panel";
 "action.openInOtherPane" = "Open in Other Panel";
 "action.copyAsPath" = "Copy as Path";
+"sidebar.cloud" = "CLOUD";
+"sidebar.trash" = "Trash";
