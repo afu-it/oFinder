@@ -33,21 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // ───────────────────────────────────────────────
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if ProcessInfo.processInfo.environment["R2FINDER_FDA_PROBE"] != nil {
-            func out(_ s: String) { FileHandle.standardError.write((s + "\n").data(using: .utf8)!) }
-            let home = NSHomeDirectory()
-            for probe in [home + "/Library/Application Support/com.apple.TCC",
-                          home + "/.Trash"] {
-                do {
-                    let n = try FileManager.default.contentsOfDirectory(atPath: probe).count
-                    out("OK    \(n) item  \(probe)")
-                } catch let e as NSError {
-                    out("DENY  code=\(e.code)  \(probe)")
-                }
-            }
-            out("bundle: \(Bundle.main.bundlePath)")
-            exit(0)
-        }
+        FullDiskAccess.runDiagnosticIfRequested()
         NSApp.setActivationPolicy(.regular)
         buildMainMenu()
         NSApp.activate(ignoringOtherApps: true)

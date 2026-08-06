@@ -57,6 +57,42 @@ enum FullDiskAccess {
         }
     }
 
+    /// Writes a report on whether the protected directories can actually be
+    /// read, when ~/Library/Caches/r2finder-probe-me exists.
+    ///
+    /// Worth keeping, because the obvious ways to check are both wrong. System
+    /// Settings shows what was granted, not what applies — a stale entry keeps
+    /// its switch on after the bundle it named is gone. And running the binary
+    /// from a terminal reports the terminal's access, not the app's, because
+    /// TCC attributes a request to the responsible process, which for a
+    /// shell-launched executable is the shell.
+    ///
+    /// So the check has to run inside the app, launched by LaunchServices, and
+    /// leave its answer somewhere a terminal can read it afterwards. A marker
+    /// file rather than an environment variable, since `open` does not pass
+    /// the environment through.
+    static func runDiagnosticIfRequested() {
+        let marker = NSHomeDirectory() + "/Library/Caches/r2finder-probe-me"
+        guard FileManager.default.fileExists(atPath: marker) else { return }
+        try? FileManager.default.removeItem(atPath: marker)
+
+        var report = ""
+        for path in [probePath, NSHomeDirectory() + "/.Trash"] {
+            do {
+                let count = try FileManager.default.contentsOfDirectory(atPath: path).count
+                report += "OK    \(count) item  \(path)\n"
+            } catch let error as NSError {
+                report += "DENY  code=\(error.code)  \(path)\n"
+            }
+        }
+        report += "bundle: \(Bundle.main.bundlePath)\n"
+        // Written before exiting, never from a defer: exit() ends the process
+        // outright and defers do not run.
+        try? report.write(toFile: NSHomeDirectory() + "/Library/Caches/r2finder-fda.txt",
+                          atomically: true, encoding: .utf8)
+        exit(0)
+    }
+
     static func openSettings() {
         // Deep link straight to the Full Disk Access list. The pane moved in
         // Ventura, but this identifier still resolves.
