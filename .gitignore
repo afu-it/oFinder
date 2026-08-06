@@ -11,3 +11,6 @@
 
 # Test artifacts
 test_dir/
+
+# safe-code local-only issue tracker
+/.safe-code/context/current-issues.md
