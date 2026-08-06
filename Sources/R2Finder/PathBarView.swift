@@ -26,6 +26,13 @@ private final class CrumbButton: NSButton {
         contentTintColor = .labelColor
         translatesAutoresizingMaskIntoConstraints = false
         setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        // An NSButton title wraps by default, and a squeezed crumb turned
+        // "afwazan" into four stacked letters instead of shortening it.
+        if let cell = cell as? NSButtonCell {
+            cell.wraps = false
+            cell.lineBreakMode = .byTruncatingTail
+        }
+        usesSingleLineMode = true
     }
 
     @available(*, unavailable)
@@ -110,10 +117,33 @@ final class PathBarView: NSView, NSTextFieldDelegate {
         } else {
             width = stack.fittingSize.width + 8
         }
-        // Floor so an empty or one-word location still looks like a field;
-        // ceiling so a deep path cannot crowd out the rest of the toolbar —
-        // past it the crumbs truncate instead.
-        return NSSize(width: min(max(width, 120), 560), height: 24)
+        // The ceiling follows the window rather than being a fixed number, so
+        // a deep path keeps expanding as long as there is room, and only
+        // truncates once it would reach the controls on either side.
+        let sideControls: CGFloat = 380
+        let ceiling = max(280, (window?.frame.width ?? 1000) - sideControls)
+        return NSSize(width: min(max(width, 120), ceiling), height: 24)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NotificationCenter.default.removeObserver(self,
+                                                  name: NSWindow.didResizeNotification,
+                                                  object: nil)
+        guard let window else { return }
+        NotificationCenter.default.addObserver(self, selector: #selector(windowResized),
+                                               name: NSWindow.didResizeNotification,
+                                               object: window)
+    }
+
+    /// The ceiling is derived from the window width, so it has to be
+    /// recomputed when that changes.
+    @objc private func windowResized() {
+        invalidateIntrinsicContentSize()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     /// Bezel inset plus room for the caret at the end of the text.
@@ -148,6 +178,8 @@ final class PathBarView: NSView, NSTextFieldDelegate {
                 let separator = NSTextField(labelWithString: "/")
                 separator.font = .systemFont(ofSize: 12)
                 separator.textColor = .tertiaryLabelColor
+                separator.usesSingleLineMode = true
+                separator.maximumNumberOfLines = 1
                 separator.setContentCompressionResistancePriority(.required,
                                                                   for: .horizontal)
                 stack.addArrangedSubview(separator)

@@ -81,6 +81,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         toolbar.delegate = self
         toolbar.allowsUserCustomization = false
         toolbar.displayMode = .iconOnly
+        // Flexible spaces only centre an item within the space left over, so
+        // the wider group on the right pushed the path bar off the window's
+        // real centre. This pins it to the window.
+        toolbar.centeredItemIdentifiers = [.init("PathLabel")]
         window?.toolbar = toolbar
         window?.titlebarAppearsTransparent = false
         // The title said the folder's name and the path label said its path —
