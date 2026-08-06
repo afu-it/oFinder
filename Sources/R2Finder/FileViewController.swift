@@ -309,17 +309,45 @@ final class FileViewController: NSViewController {
                                  leeway: .milliseconds(50))
     }
 
+    /// Reload only when an event actually changes what this listing shows.
+    ///
+    /// FSEvents watches a directory *tree*. In "/" that is the whole disk, so
+    /// every log write and cache update anywhere arrived here and triggered a
+    /// full reload — the flicker in the root listing. An event matters only if
+    /// it touched the watched directory itself, one of its direct children, or
+    /// a folder the user has expanded in the outline.
+    func handleFSEvents(_ paths: [String], count: Int) {
+        // A dropped-events notification arrives with no usable paths; reload
+        // rather than risk showing a stale listing.
+        guard !paths.isEmpty else {
+            scheduleReload()
+            return
+        }
+        let watched = currentPath
+        let relevant = paths.contains { path in
+            if path == watched { return true }
+            let parent = (path as NSString).deletingLastPathComponent
+            return parent == watched || expandedOutlinePaths.contains(parent)
+        }
+        guard relevant else { return }
+        scheduleReload()
+    }
+
     private func startWatching(path: String) {
         stopWatching()
         var ctx = FSEventStreamContext(version: 0,
                                        info: Unmanaged.passUnretained(self).toOpaque(),
                                        retain: nil, release: nil, copyDescription: nil)
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, _, _ in
             guard let info else { return }
             let vc = Unmanaged<FileViewController>.fromOpaque(info).takeUnretainedValue()
+            // kFSEventStreamCreateFlagUseCFTypes makes eventPaths a CFArray of
+            // CFString.
+            let paths = (unsafeBitCast(eventPaths, to: NSArray.self) as? [String])
+                ?? []
             // Events are delivered on the main queue (SetDispatchQueue below).
             MainActor.assumeIsolated {
-                vc.scheduleReload()
+                vc.handleFSEvents(paths, count: numEvents)
             }
         }
         guard let stream = FSEventStreamCreate(

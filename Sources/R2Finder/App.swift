@@ -3,6 +3,7 @@
 // objc_run_app()/main.swift pair).
 
 import AppKit
+import R2FinderServices
 
 @main
 @MainActor
@@ -36,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildMainMenu()
         NSApp.activate(ignoringOtherApps: true)
         openNewWindow()
+
+        // Pay Spotlight's one-time cost for the Recents query now, in the
+        // background, rather than when someone clicks Recents and waits.
+        DispatchQueue.global(qos: .utility).async {
+            RecentsService.prewarm()
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

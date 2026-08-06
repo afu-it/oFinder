@@ -15,6 +15,11 @@ public enum RecentsService {
 
     public static func isRecents(_ path: String) -> Bool { path == locationID }
 
+    /// Hard ceiling on how many matches the walk inspects. A home directory
+    /// that is mostly generated content could otherwise send it through every
+    /// match looking for keepers that are not there.
+    private static let maxScan = 4_000
+
     /// Directory names that hold generated or vendored files. Spotlight
     /// indexes them, and on a machine with any checked-out project they
     /// otherwise drown out everything the user actually worked on — a single
@@ -35,7 +40,18 @@ public enum RecentsService {
     /// indexed. There is no sensible fallback: walking the disk would be slow
     /// and would rank by mtime, which is a different thing wearing the same
     /// name.
-    public static func list(limit: Int = 100, withinDays: Int = 30) -> [DirEntry] {
+    /// Runs the query once and discards the result.
+    ///
+    /// Spotlight caches per query *shape*: the first run of this predicate in
+    /// a process costs about 1.1s, every later one about 0.12s. A different
+    /// predicate does not warm it — measured. Calling this at launch moves the
+    /// one expensive run off the first click on Recents, where someone is
+    /// waiting for it.
+    public static func prewarm(withinDays: Int = 30) {
+        _ = makeQuery(withinDays: withinDays)
+    }
+
+    private static func makeQuery(withinDays: Int) -> MDQuery? {
         let seconds = -(withinDays * 86_400)
         let predicate = """
             (kMDItemLastUsedDate >= $time.now(\(seconds)) || \
@@ -44,26 +60,46 @@ public enum RecentsService {
             kMDItemContentTypeTree != 'com.apple.application-bundle'
             """
 
-        // valueListAttrs is deliberately nil. Naming attributes there looks
-        // like a per-result read optimisation, but that list feeds Spotlight's
-        // aggregate value lists (the counts behind grouped filters);
-        // MDQueryGetAttributeValueOfResultAtIndex returns nil for these
-        // attributes regardless, which silently empties the whole result.
+        // valueListAttrs (3rd) is deliberately nil. Naming attributes there
+        // looks like a per-result read optimisation, but that list feeds
+        // Spotlight's aggregate value lists (the counts behind grouped
+        // filters); MDQueryGetAttributeValueOfResultAtIndex returns nil for
+        // these attributes regardless, which silently empties the result.
+        //
+        // sortingAttrs (4th) is what makes this fast. Spotlight orders the
+        // matches itself, so the newest are at one end and the walk below can
+        // stop after a few hundred instead of reading an attribute off all
+        // twenty thousand.
+        let sortingAttrs = [kMDItemFSContentChangeDate] as CFArray
         guard let query = MDQueryCreate(kCFAllocatorDefault, predicate as CFString,
-                                        nil, nil) else { return [] }
+                                        nil, sortingAttrs) else { return nil }
         MDQuerySetSearchScope(query, [kMDQueryScopeHome] as CFArray, 0)
         guard MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else {
-            return []
+            return nil
         }
+        return query
+    }
+
+    public static func list(limit: Int = 100, withinDays: Int = 30) -> [DirEntry] {
+        guard let query = makeQuery(withinDays: withinDays) else { return [] }
 
         var ranked: [(entry: DirEntry, rank: Date)] = []
 
-        for i in 0..<MDQueryGetResultCount(query) {
+        // Walk from the newest end. Collect a surplus rather than exactly
+        // `limit`: the final order is by the later of last-used and changed,
+        // so a few items further down can still outrank ones already taken.
+        let total = MDQueryGetResultCount(query)
+        let wanted = limit * 3
+        var scanned = 0
+
+        for offset in 0..<total where ranked.count < wanted && scanned < Self.maxScan {
+            let i = total - 1 - offset
+            scanned += 1
             guard let raw = MDQueryGetResultAtIndex(query, i) else { continue }
             let item = unsafeBitCast(raw, to: MDItem.self)
 
-            // Path first: it is the cheapest attribute and rejects most of the
-            // result set, so the two date reads run only for keepers.
+            // Path first: it is the cheapest attribute and rejects most of
+            // what is scanned, so the date reads run only for keepers.
             guard let path = MDItemCopyAttribute(item, kMDItemPath) as? String,
                   !isExcluded(path) else { continue }
 
