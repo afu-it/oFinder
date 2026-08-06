@@ -7,7 +7,8 @@ import AppKit
 protocol TabItemViewDelegate: AnyObject {
     func tabItemClicked(_ item: TabItemView)
     func tabItemCloseClicked(_ item: TabItemView)
-    func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint)
+    func tabItemDragBegan(_ item: TabItemView, windowPoint: NSPoint)
+    func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint, windowPoint: NSPoint)
     func tabItemDragEnded(_ item: TabItemView)
 }
 
@@ -114,9 +115,14 @@ final class TabItemView: NSView {
            abs(event.locationInWindow.x - origin.x) < Self.dragThreshold {
             return
         }
-        didDrag = true
+        if !didDrag {
+            didDrag = true
+            delegate?.tabItemDragBegan(self, windowPoint: event.locationInWindow)
+        }
         guard let bar = superview?.superview else { return }
-        delegate?.tabItem(self, draggedTo: bar.convert(event.locationInWindow, from: nil))
+        delegate?.tabItem(self,
+                          draggedTo: bar.convert(event.locationInWindow, from: nil),
+                          windowPoint: event.locationInWindow)
     }
 
     override func mouseUp(with event: NSEvent) {

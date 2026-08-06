@@ -56,7 +56,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
         case #selector(createNewFolder(_:)):
             return !RecentsService.isRecents(fileVC.currentPath)
         case #selector(closeTab(_:)):
-            return activePane.tabs.count > 1
+            return true
         case #selector(toggleSplit(_:)):
             item.title = isSplit
                 ? L10n.t("view.mergePanes", "Merge Panes")
@@ -141,22 +141,33 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             splitVC.addSplitViewItem(item)
         }
 
-        for pane in panes { pane.showsActiveBorder = true }
+        for pane in panes {
+            pane.showsActiveBorder = true
+            pane.allowsClosingLastTab = true
+        }
         setActivePane(panes.firstIndex(where: { $0 === pane }) ?? 0)
+    }
+
+    /// Removes a named pane. Callers say which one goes rather than which one
+    /// stays: closing a pane's last tab has to discard *that* pane, and a
+    /// "keep the active one" rule discards the healthy half instead.
+    private func closePane(_ pane: PaneViewController) {
+        guard isSplit, let index = panes.firstIndex(where: { $0 === pane }) else { return }
+        if let item = splitVC.splitViewItems.first(where: { $0.viewController === pane }) {
+            splitVC.removeSplitViewItem(item)
+        }
+        panes.remove(at: index)
+        for pane in panes {
+            pane.showsActiveBorder = false
+            pane.allowsClosingLastTab = false
+        }
+        setActivePane(0)
     }
 
     private func mergePanes() {
         guard isSplit else { return }
-        // Keep the active pane; the inactive one is the one being dismissed.
-        let closing = activePaneIndex == 0 ? 1 : 0
-        let pane = panes[closing]
-        if let item = splitVC.splitViewItems.first(where: { $0.viewController === pane }) {
-            splitVC.removeSplitViewItem(item)
-        }
-        panes.remove(at: closing)
-        activePaneIndex = 0
-        for pane in panes { pane.showsActiveBorder = false }
-        setActivePane(0)
+        // Merging from the menu keeps what the user is looking at.
+        closePane(panes[activePaneIndex == 0 ? 1 : 0])
     }
 
     @IBAction func focusOtherPane(_ sender: Any?) {
@@ -180,10 +191,8 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     }
 
     @IBAction func closeTab(_ sender: Any?) {
-        guard activePane.tabs.count > 1 else {
-            window?.performClose(sender)
-            return
-        }
+        // closeTab reports back through paneDidCloseLastTab when it is the
+        // pane's last, which collapses the split or closes the window.
         activePane.closeTab(at: activePane.activeIndex)
     }
 
@@ -415,13 +424,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     }
 
     func paneDidCloseLastTab(_ pane: PaneViewController) {
-        // A pane with nothing left in it closes the split, or the window when
-        // there is no split to close.
+        // The pane that ran out of tabs is the one that goes; with no split to
+        // collapse into, the window closes instead.
         if isSplit {
-            if let index = panes.firstIndex(where: { $0 === pane }) {
-                activePaneIndex = index
-            }
-            mergePanes()
+            closePane(pane)
         } else {
             window?.performClose(nil)
         }

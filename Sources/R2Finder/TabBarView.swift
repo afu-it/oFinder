@@ -24,9 +24,21 @@ final class TabBarView: NSView {
 
     private(set) var titles: [String] = []
     private(set) var selectedIndex = 0
+    /// Whether closing this pane's last tab is allowed — true when the window
+    /// is split, since the pane simply collapses back into one.
+    private var canCloseLast = false
+
+    /// A lone tab in a lone pane hides its close button: closing it would
+    /// close the window, and a strip that can empty itself is a trap. Once the
+    /// window is split there is somewhere for the close to land, so every tab
+    /// gets one.
+    private var showsCloseButtons: Bool { titles.count > 1 || canCloseLast }
     /// One split per drag. Without this the pointer sitting near the edge
     /// fires on every mouse-moved event and the window splits repeatedly.
     private var edgeSignalled = false
+    private let dragVisuals = TabDragVisuals()
+    /// The split is committed on mouse-up, not on entering the zone.
+    private var pendingEdgeOnRelease: NSRectEdge?
 
     private let stack = NSStackView()
     private let addButton = HoverButton(
@@ -97,9 +109,10 @@ final class TabBarView: NSView {
         NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()
     }
 
-    func setTabs(_ titles: [String], selected: Int) {
+    func setTabs(_ titles: [String], selected: Int, canCloseLast: Bool) {
         self.titles = titles
         selectedIndex = selected
+        self.canCloseLast = canCloseLast
 
         // Reuse the existing tabs whenever the count is unchanged — a
         // selection change or a reorder must not replace the view a drag is
@@ -113,7 +126,7 @@ final class TabBarView: NSView {
             item.index = index
             item.update(title: titles[index],
                         isSelected: index == selected,
-                        showsClose: titles.count > 1)
+                        showsClose: showsCloseButtons)
         }
         needsDisplay = true
     }
@@ -130,10 +143,7 @@ final class TabBarView: NSView {
         for (index, title) in titles.enumerated() {
             let item = TabItemView(title: title,
                                    isSelected: index == selectedIndex,
-                                   // A lone tab has no close button: closing it
-                                   // would mean closing the window, and a tab
-                                   // strip that can empty itself is a trap.
-                                   showsClose: titles.count > 1)
+                                   showsClose: showsCloseButtons)
             item.index = index
             item.delegate = self
             item.widthAnchor.constraint(greaterThanOrEqualToConstant: Self.minTabWidth)
@@ -165,29 +175,60 @@ extension TabBarView: TabItemViewDelegate {
     ///
     /// A drag that leaves the strip and reaches the edge of the pane means
     /// something else entirely: split, and take this tab with you.
-    func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint) {
+    func tabItemDragBegan(_ item: TabItemView, windowPoint: NSPoint) {
+        dragVisuals.begin(dragging: item, at: windowPoint)
+    }
+
+    func tabItem(_ item: TabItemView, draggedTo pointInBar: NSPoint,
+                 windowPoint: NSPoint) {
+        // The strip only spans its tabs, so edges are measured against the
+        // pane it sits in — otherwise a drag just past the last tab would
+        // count as reaching the far side of the window.
+        let edge = pendingEdge(for: pointInBar)
+        dragVisuals.update(to: windowPoint, snappingTo: edge.map(dropZoneRect))
+
         let items = stack.arrangedSubviews.compactMap { $0 as? TabItemView }
-        if let target = items.first(where: { $0.frame.contains(pointInBar) }) {
+        if edge == nil,
+           let target = items.first(where: { $0.frame.contains(pointInBar) }) {
             guard target.index != item.index else { return }
             delegate?.tabBar(self, didMove: item.index, to: target.index)
             return
         }
 
-        // The strip only spans its tabs, so edges are measured against the
-        // pane it sits in — otherwise a drag just past the last tab would
-        // count as reaching the far side of the window.
-        guard !edgeSignalled, let host = superview else { return }
-        let point = convert(pointInBar, to: host)
-        if point.x > host.bounds.maxX - Self.edgeMargin {
-            edgeSignalled = true
-            delegate?.tabBar(self, didDragTab: item.index, toEdge: .maxX)
-        } else if point.x < host.bounds.minX + Self.edgeMargin {
-            edgeSignalled = true
-            delegate?.tabBar(self, didDragTab: item.index, toEdge: .minX)
-        }
+        // The zone is shown as soon as the pointer reaches the edge, but the
+        // split only happens on release. Committing on entry would tear the
+        // window in half while the hand is still moving through.
+        guard let edge else { return }
+        pendingEdgeOnRelease = edge
     }
 
     func tabItemDragEnded(_ item: TabItemView) {
-        edgeSignalled = false
+        dragVisuals.end()
+        defer {
+            pendingEdgeOnRelease = nil
+            edgeSignalled = false
+        }
+        guard !edgeSignalled, let edge = pendingEdgeOnRelease else { return }
+        edgeSignalled = true
+        delegate?.tabBar(self, didDragTab: item.index, toEdge: edge)
+    }
+
+    /// Which edge, if any, the pointer has reached.
+    private func pendingEdge(for pointInBar: NSPoint) -> NSRectEdge? {
+        guard let host = superview else { return nil }
+        let point = convert(pointInBar, to: host)
+        if point.x > host.bounds.maxX - Self.edgeMargin { return .maxX }
+        if point.x < host.bounds.minX + Self.edgeMargin { return .minX }
+        return nil
+    }
+
+    /// The half of the pane a drop would land in, in window content
+    /// coordinates.
+    private func dropZoneRect(for edge: NSRectEdge) -> NSRect {
+        guard let host = superview, let content = window?.contentView else { return .zero }
+        var rect = host.convert(host.bounds, to: content).insetBy(dx: 4, dy: 4)
+        rect.size.width /= 2
+        if edge == .maxX { rect.origin.x += rect.width }
+        return rect
     }
 }

@@ -214,8 +214,15 @@ final class PaneViewController: NSViewController, TabBarViewDelegate,
         ])
     }
 
+    /// Set while the window is split: closing this pane's last tab is then a
+    /// safe thing to offer, because the pane collapses instead of vanishing.
+    var allowsClosingLastTab = false {
+        didSet { refreshTabBar() }
+    }
+
     func refreshTabBar() {
-        tabBar.setTabs(tabs.map(\.title), selected: activeIndex)
+        tabBar.setTabs(tabs.map(\.title), selected: activeIndex,
+                       canCloseLast: allowsClosingLastTab)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
