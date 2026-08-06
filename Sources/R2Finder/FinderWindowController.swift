@@ -283,11 +283,11 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // ───────────────────────────────────────────────
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        // Back/forward leads, in the corner the title used to occupy — the
-        // same place browsers and Finder put navigation.
-        [.init("BackForward"), .init("ViewMode"), .flexibleSpace,
+        // Navigation on the left, the location in the middle, and the two
+        // controls that act on the view itself gathered in the right corner.
+        [.init("BackForward"), .flexibleSpace,
          .init("PathLabel"), .flexibleSpace,
-         .init("NewFolder")]
+         .init("NewFolder"), .init("ViewMode")]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
