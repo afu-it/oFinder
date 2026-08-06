@@ -441,6 +441,17 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         }
     }
 
+    /// "New Split" only stays true until there is one. Once the window is
+    /// already split the same command opens in the other half, and a menu that
+    /// says otherwise is describing a window the user is not looking at.
+    var splitActionTitle: String {
+        let isSplit = (view.window?.windowController as? FinderWindowController)?
+            .isSplit ?? false
+        return isSplit
+            ? L10n.t("action.openInOtherPane", "Open in Other Pane")
+            : L10n.t("action.openInNewSplit", "Open in New Split")
+    }
+
     func contextMenu(for entry: FileEntry?) -> NSMenu {
         let menu = NSMenu(title: "")
 
@@ -461,6 +472,9 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
                 // FinderWindowController, which owns the tabs and the sidebar.
                 menu.addItem(withTitle: L10n.t("action.openInNewTab", "Open in New Tab"),
                              action: #selector(FinderWindowController.openInNewTab(_:)),
+                             keyEquivalent: "")
+                menu.addItem(withTitle: splitActionTitle,
+                             action: #selector(FinderWindowController.openInNewSplit(_:)),
                              keyEquivalent: "")
                 menu.addItem(withTitle: L10n.t("action.addToSidebar", "Add to Sidebar"),
                              action: #selector(FinderWindowController.addToSidebar(_:)),

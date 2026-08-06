@@ -57,7 +57,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             return !RecentsService.isRecents(fileVC.currentPath)
         case #selector(closeTab(_:)):
             return true
-        case #selector(openInNewTab(_:)):
+        case #selector(openInNewTab(_:)), #selector(openInNewSplit(_:)):
             return fileVC.selectedPaths().contains(where: Self.isDirectory)
         case #selector(toggleSplit(_:)):
             item.title = isSplit
@@ -209,6 +209,28 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
     func openInNewTab(path: String) {
         activePane.addTab(path: path)
+    }
+
+    /// Opens folders in the other half of the window, splitting first if there
+    /// is no other half yet.
+    @IBAction func openInNewSplit(_ sender: Any?) {
+        openInNewSplit(paths: fileVC.selectedPaths().filter(Self.isDirectory))
+    }
+
+    func openInNewSplit(paths: [String]) {
+        guard let first = paths.first else { return }
+        if isSplit {
+            let other = activePaneIndex == 0 ? 1 : 0
+            panes[other].addTab(path: first)
+            setActivePane(other)
+        } else {
+            // splitPane leaves the new pane active, which is where the
+            // remaining folders below should land.
+            splitPane(adopting: BrowserTab(path: first))
+        }
+        // A window has two halves, so extra folders stack up as tabs in the
+        // one just opened rather than splitting further.
+        for path in paths.dropFirst() { activePane.addTab(path: path) }
     }
 
     @IBAction func selectNextTab(_ sender: Any?) {
@@ -395,6 +417,10 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
     func sidebar(_ sidebar: SidebarViewController, openInNewTab path: String) {
         openInNewTab(path: path)
+    }
+
+    func sidebar(_ sidebar: SidebarViewController, openInNewSplit path: String) {
+        openInNewSplit(paths: [path])
     }
 
     func sidebar(_ sidebar: SidebarViewController,

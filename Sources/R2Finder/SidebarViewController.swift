@@ -15,6 +15,7 @@ protocol SidebarViewControllerDelegate: AnyObject {
     func sidebar(_ sidebar: SidebarViewController,
                  dropFilePaths paths: [String], toDir dstDir: String, isMove: Bool)
     func sidebar(_ sidebar: SidebarViewController, openInNewTab path: String)
+    func sidebar(_ sidebar: SidebarViewController, openInNewSplit path: String)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -706,6 +707,11 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         delegate?.sidebar(self, openInNewTab: path)
     }
 
+    @objc private func openClickedInNewSplit(_ sender: Any?) {
+        guard let path = openTargetPath else { return }
+        delegate?.sidebar(self, openInNewSplit: path)
+    }
+
     /// Captured with the menu, like the eject and remove targets: clickedRow
     /// has reset to -1 by the time the item fires.
     private var openTargetPath: String?
@@ -791,6 +797,15 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                 withTitle: L10n.t("action.openInNewTab", "Open in New Tab"),
                 action: #selector(openClickedInNewTab(_:)), keyEquivalent: "")
             open.target = self
+
+            let isSplit = (view.window?.windowController as? FinderWindowController)?
+                .isSplit ?? false
+            let split = menu.addItem(
+                withTitle: isSplit
+                    ? L10n.t("action.openInOtherPane", "Open in Other Pane")
+                    : L10n.t("action.openInNewSplit", "Open in New Split"),
+                action: #selector(openClickedInNewSplit(_:)), keyEquivalent: "")
+            split.target = self
         }
 
         if let entry = favoriteEntry(for: item) {

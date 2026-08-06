@@ -161,3 +161,5 @@
 "view.mergePanes" = "Unir paneles";
 "view.otherPane" = "Ir al otro panel";
 "action.openInNewTab" = "Abrir en una pestaña nueva";
+"action.openInNewSplit" = "Abrir en un panel nuevo";
+"action.openInOtherPane" = "Abrir en el otro panel";
