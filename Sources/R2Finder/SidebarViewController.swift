@@ -85,6 +85,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     /// it represents without threading the identifier through SidebarItem.
     private var favoriteEntries: [FavoritesStore.Entry] = []
 
+    /// Held by reference rather than by index into `sections`. Recents sits
+    /// above Favorites now, and section indices shift again the moment
+    /// anything else is inserted.
+    private var favoritesSection: SidebarItem?
+    private var volumesSection: SidebarItem?
+
     /// Drag type for reordering favourites. Distinct from .fileURL so a row
     /// drag and a file drop can be told apart at the drop site.
     private static let favoriteDragType =
@@ -159,10 +165,22 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     private func buildSections() {
         sections = []
 
+        // ── Recents ───────────────────────────────────────────────────────
+        // A headerless row above everything else. Recents is a query, not a
+        // place: it cannot be reordered against real folders, removed, or
+        // dropped onto, so living inside Favorites promised behaviour it does
+        // not have.
+        sections.append(SidebarItem(
+            name: L10n.t("sidebar.recents", "Recents"),
+            path: RecentsService.locationID,
+            icon: NSImage(systemSymbolName: "clock",
+                          accessibilityDescription: "recents")))
+
         // ── Favourites ────────────────────────────────────────────────────
         // Order comes from FavoritesStore so the user's arrangement survives
         // relaunch; the rows themselves are resolved fresh each time.
         let favHeader = SidebarItem(header: L10n.t("sidebar.favorites", "FAVORITES"))
+        favoritesSection = favHeader
         let specialsByKey = Dictionary(
             uniqueKeysWithValues: VolumeService.specialDirs().compactMap { dir in
                 dir.key.map { ($0, dir) }
@@ -171,12 +189,6 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
         favoriteEntries = FavoritesStore.entries()
         for entry in favoriteEntries {
             switch entry {
-            case .recents:
-                favHeader.children.append(SidebarItem(
-                    name: L10n.t("sidebar.recents", "Recents"),
-                    path: RecentsService.locationID,
-                    icon: NSImage(systemSymbolName: "clock",
-                                  accessibilityDescription: "recents")))
             case .special(let key):
                 guard let dir = specialsByKey[key] else { continue }
                 favHeader.children.append(SidebarItem(
@@ -193,6 +205,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
 
         // ── Devices / Volumes ─────────────────────────────────────────────
         let volHeader = SidebarItem(header: L10n.t("sidebar.devices", "DEVICES"))
+        volumesSection = volHeader
         populateVolumes(volHeader)
         sections.append(volHeader)
 
@@ -247,9 +260,8 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     @objc private func volumesChanged(_ note: Notification) {
         // NSWorkspace mount/unmount notifications are delivered on the main
         // thread; this @objc method is main-actor-isolated.
-        // DISPOSITIVOS is the second section (index 1)
-        guard sections.count >= 2 else { return }
-        populateVolumes(sections[1])
+        guard let volumesSection else { return }
+        populateVolumes(volumesSection)
         outlineView.reloadData()
         outlineView.expandItem(nil, expandChildren: true)
     }
@@ -609,7 +621,10 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
             guard index >= 0, isFavoritesHeader(item) else { return [] }
             return .move
         }
-        guard let si = item as? SidebarItem, !si.isHeader, si.path != nil else { return [] }
+        // Recents carries a path so it can be navigated to, but it is a query:
+        // nothing can be dropped into it.
+        guard let si = item as? SidebarItem, !si.isHeader, let path = si.path,
+              !RecentsService.isRecents(path) else { return [] }
         if info.draggingSourceOperationMask.contains(.move) { return .move }
         return .copy
     }
@@ -624,7 +639,8 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
             return true
         }
 
-        guard let si = item as? SidebarItem, !si.isHeader, let dstDir = si.path else { return false }
+        guard let si = item as? SidebarItem, !si.isHeader, let dstDir = si.path,
+              !RecentsService.isRecents(dstDir) else { return false }
         guard let urls = info.draggingPasteboard.readObjects(
                 forClasses: [NSURL.self],
                 options: [.urlReadingFileURLsOnly: true]) as? [URL],
@@ -636,12 +652,12 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
 
     private func isFavoritesHeader(_ item: Any?) -> Bool {
         guard let si = item as? SidebarItem else { return false }
-        return si === sections.first
+        return si === favoritesSection
     }
 
     private func favoriteEntry(for item: Any) -> FavoritesStore.Entry? {
         guard let si = item as? SidebarItem, !si.isHeader,
-              let children = sections.first?.children,
+              let children = favoritesSection?.children,
               let idx = children.firstIndex(where: { $0 === si }),
               idx < favoriteEntries.count else { return nil }
         return favoriteEntries[idx]

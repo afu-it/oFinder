@@ -16,7 +16,6 @@ enum FavoritesStore {
     private static let defaultsKey = "sidebarFavoriteOrder"
 
     enum Entry: Equatable {
-        case recents
         /// A well-known directory, keyed by VolumeService's stable key.
         case special(key: String)
         /// A folder the user added, keyed by absolute path.
@@ -24,14 +23,14 @@ enum FavoritesStore {
 
         var id: String {
             switch self {
-            case .recents:            return "recents"
             case .special(let key):   return "special:" + key
             case .custom(let path):   return "custom:" + path
             }
         }
 
         init?(id: String) {
-            if id == "recents" { self = .recents; return }
+            // "recents" was persisted here in an earlier version; it is its
+            // own sidebar section now, so old entries are simply dropped.
             if id.hasPrefix("special:") {
                 self = .special(key: String(id.dropFirst("special:".count)))
                 return
@@ -59,8 +58,6 @@ enum FavoritesStore {
 
         var result = saved.filter { entry in
             switch entry {
-            case .recents:
-                return true
             case .special(let key):
                 return liveSpecialKeys.contains(key)
             case .custom(let path):
@@ -69,7 +66,6 @@ enum FavoritesStore {
             }
         }
 
-        if !result.contains(.recents) { result.insert(.recents, at: 0) }
         for key in liveSpecialKeys where !result.contains(.special(key: key)) {
             result.append(.special(key: key))
         }

@@ -44,14 +44,13 @@ public enum RecentsService {
             kMDItemContentTypeTree != 'com.apple.application-bundle'
             """
 
-        // Naming the attributes up front makes Spotlight precompute them, so
-        // the per-result reads below are cache hits rather than a round trip
-        // to the metadata store for every one of thousands of results.
-        let wanted = [kMDItemPath, kMDItemLastUsedDate,
-                      kMDItemFSContentChangeDate] as CFArray
-
+        // valueListAttrs is deliberately nil. Naming attributes there looks
+        // like a per-result read optimisation, but that list feeds Spotlight's
+        // aggregate value lists (the counts behind grouped filters);
+        // MDQueryGetAttributeValueOfResultAtIndex returns nil for these
+        // attributes regardless, which silently empties the whole result.
         guard let query = MDQueryCreate(kCFAllocatorDefault, predicate as CFString,
-                                        wanted, nil) else { return [] }
+                                        nil, nil) else { return [] }
         MDQuerySetSearchScope(query, [kMDQueryScopeHome] as CFArray, 0)
         guard MDQueryExecute(query, CFOptionFlags(kMDQuerySynchronous.rawValue)) else {
             return []
@@ -60,21 +59,30 @@ public enum RecentsService {
         var ranked: [(entry: DirEntry, rank: Date)] = []
 
         for i in 0..<MDQueryGetResultCount(query) {
-            guard let path = attribute(query, i, kMDItemPath) as? String,
+            guard let raw = MDQueryGetResultAtIndex(query, i) else { continue }
+            let item = unsafeBitCast(raw, to: MDItem.self)
+
+            // Path first: it is the cheapest attribute and rejects most of the
+            // result set, so the two date reads run only for keepers.
+            guard let path = MDItemCopyAttribute(item, kMDItemPath) as? String,
                   !isExcluded(path) else { continue }
 
-            let used = attribute(query, i, kMDItemLastUsedDate) as? Date
-            let changed = attribute(query, i, kMDItemFSContentChangeDate) as? Date
+            let used = MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
+            let changed = MDItemCopyAttribute(item, kMDItemFSContentChangeDate) as? Date
             guard let rank = [used, changed].compactMap({ $0 }).max() else { continue }
 
             // Spotlight's index lags deletions, so confirm the file is still
-            // there before offering it.
+            // there before offering it. The same stat also rejects folders:
+            // the predicate asks Spotlight to exclude public.folder, but that
+            // attribute is not always populated, so plain directories slip
+            // through. Finder's Recents lists files only.
             var st = stat()
-            guard stat(path, &st) == 0 else { continue }
+            guard stat(path, &st) == 0,
+                  (st.st_mode & S_IFMT) != S_IFDIR else { continue }
 
             ranked.append((DirEntry(name: (path as NSString).lastPathComponent,
                                     path: path,
-                                    isDir: (st.st_mode & S_IFMT) == S_IFDIR,
+                                    isDir: false,
                                     isSymlink: false,
                                     size: UInt64(max(0, st.st_size)),
                                     mtime: Int64(st.st_mtimespec.tv_sec)),
@@ -83,13 +91,6 @@ public enum RecentsService {
 
         ranked.sort { $0.rank > $1.rank }
         return ranked.prefix(limit).map(\.entry)
-    }
-
-    private static func attribute(_ query: MDQuery, _ index: CFIndex,
-                                  _ name: CFString) -> Any? {
-        guard let raw = MDQueryGetAttributeValueOfResultAtIndex(query, name, index)
-        else { return nil }
-        return Unmanaged<CFTypeRef>.fromOpaque(raw).takeUnretainedValue()
     }
 
     /// Excludes dot-directories, dotfiles and known generated-content folders.
