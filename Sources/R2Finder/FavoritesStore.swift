@@ -43,6 +43,22 @@ enum FavoritesStore {
         }
     }
 
+    private static let removedKey = "sidebarFavoritesRemovedBuiltIns"
+
+    /// Built-in entries the user deliberately removed.
+    ///
+    /// Needed because reconciliation appends any built-in missing from the
+    /// saved order. Without a record of the intent, "removed" and "not seen
+    /// yet" look identical, and a removed Desktop would quietly come back on
+    /// the next launch.
+    private static func removedBuiltIns() -> Set<String> {
+        Set(UserDefaults.standard.array(forKey: removedKey) as? [String] ?? [])
+    }
+
+    private static func setRemovedBuiltIns(_ ids: Set<String>) {
+        UserDefaults.standard.set(Array(ids), forKey: removedKey)
+    }
+
     /// The saved order, reconciled against what actually exists right now.
     ///
     /// Reconciliation runs in both directions: entries that no longer resolve
@@ -66,7 +82,10 @@ enum FavoritesStore {
             }
         }
 
-        for key in liveSpecialKeys where !result.contains(.special(key: key)) {
+        let removed = removedBuiltIns()
+        for key in liveSpecialKeys
+        where !result.contains(.special(key: key))
+            && !removed.contains(Entry.special(key: key).id) {
             result.append(.special(key: key))
         }
         return result
@@ -76,10 +95,27 @@ enum FavoritesStore {
         UserDefaults.standard.set(entries.map(\.id), forKey: defaultsKey)
     }
 
-    /// Appends a folder. Returns false if it was already there, so the caller
-    /// can avoid a pointless sidebar rebuild.
+    /// Adds a folder. Returns false if it was already there, so the caller can
+    /// avoid a pointless sidebar rebuild.
+    ///
+    /// Adding back a folder that is one of the built-ins restores the built-in
+    /// rather than creating a second, custom row pointing at the same place.
+    /// That makes Remove reversible through the same gesture that adds
+    /// anything else, which is the only undo this list has.
     @discardableResult
     static func add(path: String) -> Bool {
+        if let key = VolumeService.specialDirs().first(where: { $0.path == path })?.key {
+            let builtIn = Entry.special(key: key)
+            var removed = removedBuiltIns()
+            if removed.contains(builtIn.id) {
+                removed.remove(builtIn.id)
+                setRemovedBuiltIns(removed)
+                return true
+            }
+            // Present already, under its built-in identity.
+            return false
+        }
+
         var current = entries()
         guard !current.contains(.custom(path: path)) else { return false }
         current.append(.custom(path: path))
@@ -88,6 +124,9 @@ enum FavoritesStore {
     }
 
     static func remove(_ entry: Entry) {
+        if case .special = entry {
+            setRemovedBuiltIns(removedBuiltIns().union([entry.id]))
+        }
         save(entries().filter { $0 != entry })
     }
 

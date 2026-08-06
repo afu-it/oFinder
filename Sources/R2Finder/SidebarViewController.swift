@@ -667,17 +667,18 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     // Context menu
     // ─────────────
 
-    /// Only user-added favourites can be removed. Recents and the special
-    /// directories come back on the next launch anyway, so offering to remove
-    /// them would be a button that quietly does nothing.
+    /// Any favourite can be removed, built-in ones included. A removed
+    /// built-in is remembered as removed, and comes back by navigating to the
+    /// folder and using Add to Sidebar.
     @objc private func removeClickedFavorite(_ sender: Any?) {
-        let row = outlineView.clickedRow
-        guard row >= 0, let item = outlineView.item(atRow: row),
-              let entry = favoriteEntry(for: item),
-              case .custom = entry else { return }
+        guard let entry = removeTargetEntry else { return }
         FavoritesStore.remove(entry)
         reloadFavorites()
     }
+
+    /// Captured while the menu is built. `clickedRow` has reset by the time
+    /// the item fires, so reading it in the action removes the wrong row.
+    private var removeTargetEntry: FavoritesStore.Entry?
 
     /// Whether this volume can be detached.
     ///
@@ -735,11 +736,13 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         ejectTargetPath = nil
+        removeTargetEntry = nil
 
         let row = outlineView.clickedRow
         guard row >= 0, let item = outlineView.item(atRow: row) else { return }
 
-        if let entry = favoriteEntry(for: item), case .custom = entry {
+        if let entry = favoriteEntry(for: item) {
+            removeTargetEntry = entry
             let remove = menu.addItem(
                 withTitle: L10n.t("action.removeFromSidebar", "Remove from Sidebar"),
                 action: #selector(removeClickedFavorite(_:)), keyEquivalent: "")
