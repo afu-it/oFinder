@@ -152,3 +152,11 @@
 "action.removeFromSidebar" = "Remove from Sidebar";
 "action.eject" = "Eject";
 "eject.failed" = "Couldn't eject “%@”.";
+"tab.new" = "New Tab";
+"tab.close" = "Close Tab";
+"tab.next" = "Show Next Tab";
+"tab.previous" = "Show Previous Tab";
+"menu.view" = "View";
+"view.splitPane" = "Split Pane";
+"view.mergePanes" = "Merge Panes";
+"view.otherPane" = "Go to Other Pane";

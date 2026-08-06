@@ -1,6 +1,9 @@
 // FinderWindowController.swift
-// Port of FinderWindowController.m: window + toolbar + navigation history,
-// hosting the (still Objective-C) sidebar and file view controllers.
+// Window + toolbar, hosting the sidebar and one or two browsing panes.
+//
+// The window owns no browsing state of its own. Path and history belong to a
+// tab, tabs belong to a pane, and the window only knows which pane is active —
+// which is what lets the same toolbar drive either half of a split.
 
 import AppKit
 import R2FinderServices
@@ -8,35 +11,24 @@ import R2FinderServices
 final class FinderWindowController: NSWindowController, NSToolbarDelegate,
                                     NSMenuItemValidation,
                                     SidebarViewControllerDelegate,
-                                    FileViewControllerDelegate {
-
-    func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        if item.action == #selector(addToSidebar(_:)) {
-            return !sidebarCandidates().isEmpty
-        }
-        if item.action == #selector(createNewFolder(_:)) {
-            return !RecentsService.isRecents(fileVC.currentPath)
-        }
-        return true
-    }
+                                    PaneViewControllerDelegate {
 
     private var splitVC = NSSplitViewController()
     private let sidebarVC = SidebarViewController()
-    private let fileVC: FileViewController
 
-    // Navigation stack
-    private var history: [String] = []
-    private var historyIndex = -1
+    private var panes: [PaneViewController] = []
+    private var activePaneIndex = 0
 
     // Toolbar items
     private var navControl: NSSegmentedControl?      // back / forward segments
     private var viewModeControl: NSSegmentedControl?
     private var pathLabel: NSTextField?
 
-    init(path: String) {
-        fileVC = FileViewController(path: path)
+    private var activePane: PaneViewController { panes[activePaneIndex] }
+    private var fileVC: FileViewController { activePane.fileVC }
+    var isSplit: Bool { panes.count > 1 }
 
-        // Create window programmatically
+    init(path: String) {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 650),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered,
@@ -47,13 +39,34 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
         super.init(window: win)
 
+        panes = [makePane(path: path)]
         setupToolbar()
         setupContent()
-        pushPath(path, updateContent: false)
+        locationChanged()
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        switch item.action {
+        case #selector(addToSidebar(_:)):
+            return !sidebarCandidates().isEmpty
+        case #selector(createNewFolder(_:)):
+            return !RecentsService.isRecents(fileVC.currentPath)
+        case #selector(closeTab(_:)):
+            return activePane.tabs.count > 1
+        case #selector(toggleSplit(_:)):
+            item.title = isSplit
+                ? L10n.t("view.mergePanes", "Merge Panes")
+                : L10n.t("view.splitPane", "Split Pane")
+            return true
+        case #selector(focusOtherPane(_:)):
+            return isSplit
+        default:
+            return true
+        }
+    }
 
     // ───────────────────────────────────────────────
     // MARK: – Toolbar
@@ -72,77 +85,132 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // MARK: – Content
     // ───────────────────────────────────────────────
 
+    private func makePane(path: String) -> PaneViewController {
+        let pane = PaneViewController(path: path)
+        pane.delegate = self
+        return pane
+    }
+
     private func setupContent() {
         sidebarVC.delegate = self
-        fileVC.delegate = self
 
         let sideItem = NSSplitViewItem(sidebarWithViewController: sidebarVC)
         sideItem.minimumThickness = 180
         sideItem.maximumThickness = 280
-
-        let contentItem = NSSplitViewItem(viewController: fileVC)
-        contentItem.minimumThickness = 300
-
         splitVC.addSplitViewItem(sideItem)
+
+        let contentItem = NSSplitViewItem(viewController: panes[0])
+        contentItem.minimumThickness = 300
         splitVC.addSplitViewItem(contentItem)
 
+        panes[0].isActive = true
         window?.contentViewController = splitVC
+    }
+
+    // ───────────────────────────────────────────────
+    // MARK: – Panes
+    // ───────────────────────────────────────────────
+
+    @IBAction func toggleSplit(_ sender: Any?) {
+        isSplit ? mergePanes() : splitPane()
+    }
+
+    private func splitPane() {
+        guard !isSplit else { return }
+        // The new pane opens where the current one is looking. Starting it at
+        // home would throw away the context the split was opened for — the
+        // usual reason to split is to move something out of here.
+        let pane = makePane(path: activePane.activeTab.currentPath)
+        panes.append(pane)
+
+        let item = NSSplitViewItem(viewController: pane)
+        item.minimumThickness = 250
+        splitVC.addSplitViewItem(item)
+
+        for pane in panes { pane.showsActiveBorder = true }
+        setActivePane(1)
+    }
+
+    private func mergePanes() {
+        guard isSplit else { return }
+        // Keep the active pane; the inactive one is the one being dismissed.
+        let closing = activePaneIndex == 0 ? 1 : 0
+        let pane = panes[closing]
+        if let item = splitVC.splitViewItems.first(where: { $0.viewController === pane }) {
+            splitVC.removeSplitViewItem(item)
+        }
+        panes.remove(at: closing)
+        activePaneIndex = 0
+        for pane in panes { pane.showsActiveBorder = false }
+        setActivePane(0)
+    }
+
+    @IBAction func focusOtherPane(_ sender: Any?) {
+        guard isSplit else { return }
+        setActivePane(activePaneIndex == 0 ? 1 : 0)
+    }
+
+    private func setActivePane(_ index: Int) {
+        guard panes.indices.contains(index) else { return }
+        activePaneIndex = index
+        for (i, pane) in panes.enumerated() { pane.isActive = i == index }
+        locationChanged()
+    }
+
+    // ───────────────────────────────────────────────
+    // MARK: – Tabs
+    // ───────────────────────────────────────────────
+
+    @IBAction func newTab(_ sender: Any?) {
+        activePane.addTab(path: activePane.activeTab.currentPath)
+    }
+
+    @IBAction func closeTab(_ sender: Any?) {
+        guard activePane.tabs.count > 1 else {
+            window?.performClose(sender)
+            return
+        }
+        activePane.closeTab(at: activePane.activeIndex)
+    }
+
+    @IBAction func selectNextTab(_ sender: Any?) {
+        activePane.selectNextTab()
+    }
+
+    @IBAction func selectPreviousTab(_ sender: Any?) {
+        activePane.selectNextTab(reverse: true)
+    }
+
+    /// Cmd+1…9. The ninth shortcut selects the last tab rather than the ninth,
+    /// matching browsers: with six tabs open, Cmd+9 should still go somewhere.
+    @IBAction func selectTabByNumber(_ sender: Any?) {
+        guard let item = sender as? NSMenuItem,
+              let number = Int(item.keyEquivalent) else { return }
+        let index = number == 9 ? activePane.tabs.count - 1 : number - 1
+        activePane.select(index: index)
     }
 
     // ───────────────────────────────────────────────
     // MARK: – Navigation
     // ───────────────────────────────────────────────
 
-    private func pushPath(_ path: String, updateContent: Bool) {
-        // Truncate forward history
-        if historyIndex < history.count - 1 {
-            history.removeSubrange((historyIndex + 1)...)
-        }
-        history.append(path)
-        historyIndex = history.count - 1
-        updateToolbarState()
-        if updateContent { fileVC.loadPath(path) }
-        showCurrent(path)
-    }
-
     func navigateToPath(_ path: String) {
-        pushPath(path, updateContent: true)
+        activePane.navigate(to: path)
+    }
+
+    @IBAction func goBack(_ sender: Any?) { activePane.goBack() }
+    @IBAction func goForward(_ sender: Any?) { activePane.goForward() }
+
+    /// Pushes the active pane's location out to everything that mirrors it.
+    private func locationChanged() {
+        let path = activePane.activeTab.currentPath
+        let title = activePane.activeTab.title
+        window?.title = title
+        pathLabel?.stringValue = RecentsService.isRecents(path) ? title : path
         sidebarVC.highlightPath(path)
-    }
-
-    private func goToHistoryEntry(at index: Int) {
-        guard history.indices.contains(index) else { return }
-        historyIndex = index
-        let path = history[index]
-        fileVC.loadPath(path)
-        showCurrent(path)
-        sidebarVC.highlightPath(path)
-        updateToolbarState()
-    }
-
-    @IBAction func goBack(_ sender: Any?) {
-        goToHistoryEntry(at: historyIndex - 1)
-    }
-
-    @IBAction func goForward(_ sender: Any?) {
-        goToHistoryEntry(at: historyIndex + 1)
-    }
-
-    private func showCurrent(_ path: String) {
-        if RecentsService.isRecents(path) {
-            let title = L10n.t("sidebar.recents", "Recents")
-            window?.title = title
-            pathLabel?.stringValue = title
-            return
-        }
-        let last = (path as NSString).lastPathComponent
-        window?.title = last.isEmpty ? path : last
-        pathLabel?.stringValue = path
-    }
-
-    private func updateToolbarState() {
-        navControl?.setEnabled(historyIndex > 0, forSegment: 0)
-        navControl?.setEnabled(historyIndex < history.count - 1, forSegment: 1)
+        viewModeControl?.selectedSegment = fileVC.viewMode.rawValue
+        navControl?.setEnabled(activePane.activeTab.history.canGoBack, forSegment: 0)
+        navControl?.setEnabled(activePane.activeTab.history.canGoForward, forSegment: 1)
     }
 
     // ───────────────────────────────────────────────
@@ -242,13 +310,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     }
 
     @IBAction func createNewFolder(_ sender: Any?) {
-        // Use the FileViewController's own currentPath — it is always up to
-        // date even if the history stack and the file view diverge momentarily.
-        let current = fileVC.currentPath.isEmpty
-            ? (historyIndex >= 0 ? history[historyIndex] : nil)
-            : fileVC.currentPath
+        let current = fileVC.currentPath
         // Recents is a query result, not a place a folder can be created in.
-        guard let current, !RecentsService.isRecents(current) else { return }
+        guard !current.isEmpty, !RecentsService.isRecents(current) else { return }
         fileVC.createNewFolder(inPath: current)
     }
 
@@ -288,7 +352,7 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     // ───────────────────────────────────────────────
 
     func sidebar(_ sidebar: SidebarViewController, didSelectPath path: String) {
-        pushPath(path, updateContent: true)
+        activePane.navigate(to: path)
     }
 
     func sidebar(_ sidebar: SidebarViewController,
@@ -297,11 +361,30 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
     }
 
     // ───────────────────────────────────────────────
-    // MARK: – FileViewControllerDelegate
+    // MARK: – PaneViewControllerDelegate
     // ───────────────────────────────────────────────
 
-    func fileViewController(_ vc: FileViewController, didNavigateToPath path: String) {
-        pushPath(path, updateContent: false) // content already updated by fileVC
-        sidebarVC.highlightPath(path)
+    func paneDidChangeLocation(_ pane: PaneViewController) {
+        guard pane === activePane else { return }
+        locationChanged()
+    }
+
+    func paneDidBecomeActive(_ pane: PaneViewController) {
+        guard let index = panes.firstIndex(where: { $0 === pane }),
+              index != activePaneIndex else { return }
+        setActivePane(index)
+    }
+
+    func paneDidCloseLastTab(_ pane: PaneViewController) {
+        // A pane with nothing left in it closes the split, or the window when
+        // there is no split to close.
+        if isSplit {
+            if let index = panes.firstIndex(where: { $0 === pane }) {
+                activePaneIndex = index
+            }
+            mergePanes()
+        } else {
+            window?.performClose(nil)
+        }
     }
 }

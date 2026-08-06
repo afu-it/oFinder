@@ -152,3 +152,11 @@
 "action.removeFromSidebar" = "Eliminar de la barra lateral";
 "action.eject" = "Expulsar";
 "eject.failed" = "No se pudo expulsar “%@”.";
+"tab.new" = "Nueva pestaña";
+"tab.close" = "Cerrar pestaña";
+"tab.next" = "Mostrar pestaña siguiente";
+"tab.previous" = "Mostrar pestaña anterior";
+"menu.view" = "Visualización";
+"view.splitPane" = "Dividir panel";
+"view.mergePanes" = "Unir paneles";
+"view.otherPane" = "Ir al otro panel";

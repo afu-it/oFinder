@@ -114,8 +114,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         addToSidebar.keyEquivalentModifierMask = [.command, .control]
 
         fileMenu.addItem(.separator())
-        fileMenu.addItem(withTitle: L10n.t("menu.closeWindow", "Close Window"),
-                         action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        fileMenu.addItem(withTitle: L10n.t("tab.new", "New Tab"),
+                         action: #selector(FinderWindowController.newTab(_:)),
+                         keyEquivalent: "t")
+
+        fileMenu.addItem(.separator())
+        // Cmd+W closes the tab and Shift+Cmd+W the window, as everywhere else
+        // on the platform. FinderWindowController.closeTab falls through to
+        // closing the window when only one tab is left, so the shortcut is
+        // never a dead key.
+        fileMenu.addItem(withTitle: L10n.t("tab.close", "Close Tab"),
+                         action: #selector(FinderWindowController.closeTab(_:)),
+                         keyEquivalent: "w")
+        let closeWindow = fileMenu.addItem(
+            withTitle: L10n.t("menu.closeWindow", "Close Window"),
+            action: #selector(NSWindow.performClose(_:)), keyEquivalent: "W")
+        closeWindow.keyEquivalentModifierMask = [.command, .shift]
 
         // ── Edición ───────────────────────────────────────────────────────────
         let editMenu = submenu(L10n.t("menu.edit", "Edit"))
@@ -136,11 +150,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(withTitle: L10n.t("action.selectAll", "Select All"),
                          action: NSSelectorFromString("selectAll:"), keyEquivalent: "a")
 
+        // ── View ──────────────────────────────────────────────────────────────
+        let viewMenu = submenu(L10n.t("menu.view", "View"))
+        let split = viewMenu.addItem(withTitle: L10n.t("view.splitPane", "Split Pane"),
+                                     action: #selector(FinderWindowController.toggleSplit(_:)),
+                                     keyEquivalent: "d")
+        split.keyEquivalentModifierMask = [.command, .option]
+        let otherPane = viewMenu.addItem(
+            withTitle: L10n.t("view.otherPane", "Go to Other Pane"),
+            action: #selector(FinderWindowController.focusOtherPane(_:)),
+            keyEquivalent: "]")
+        otherPane.keyEquivalentModifierMask = [.command, .option]
+
         // ── Ventana ───────────────────────────────────────────────────────────
         let windowMenu = submenu(L10n.t("menu.window", "Window"))
         NSApp.windowsMenu = windowMenu
         windowMenu.addItem(withTitle: L10n.t("menu.minimize", "Minimize"),
                            action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        let nextTab = windowMenu.addItem(
+            withTitle: L10n.t("tab.next", "Show Next Tab"),
+            action: #selector(FinderWindowController.selectNextTab(_:)), keyEquivalent: "\t")
+        nextTab.keyEquivalentModifierMask = [.control]
+        let prevTab = windowMenu.addItem(
+            withTitle: L10n.t("tab.previous", "Show Previous Tab"),
+            action: #selector(FinderWindowController.selectPreviousTab(_:)), keyEquivalent: "\t")
+        prevTab.keyEquivalentModifierMask = [.control, .shift]
+        for number in 1...9 {
+            let item = windowMenu.addItem(
+                withTitle: "",
+                action: #selector(FinderWindowController.selectTabByNumber(_:)),
+                keyEquivalent: "\(number)")
+            // Hidden: nine entries would swamp the menu, but the shortcuts
+            // still need a menu item to hang off.
+            item.isHidden = true
+        }
+        windowMenu.addItem(.separator())
         windowMenu.addItem(withTitle: "Zoom",
                            action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowMenu.addItem(.separator())
