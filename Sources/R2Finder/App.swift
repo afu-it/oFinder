@@ -152,12 +152,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // ── View ──────────────────────────────────────────────────────────────
         let viewMenu = submenu(L10n.t("menu.view", "View"))
-        let split = viewMenu.addItem(withTitle: L10n.t("view.splitPane", "Split Pane"),
+        let split = viewMenu.addItem(withTitle: L10n.t("view.splitPane", "Split Panel"),
                                      action: #selector(FinderWindowController.toggleSplit(_:)),
                                      keyEquivalent: "d")
         split.keyEquivalentModifierMask = [.command, .option]
         let otherPane = viewMenu.addItem(
-            withTitle: L10n.t("view.otherPane", "Go to Other Pane"),
+            withTitle: L10n.t("view.otherPane", "Go to Other Panel"),
             action: #selector(FinderWindowController.focusOtherPane(_:)),
             keyEquivalent: "]")
         otherPane.keyEquivalentModifierMask = [.command, .option]

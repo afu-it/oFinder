@@ -448,8 +448,8 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
         let isSplit = (view.window?.windowController as? FinderWindowController)?
             .isSplit ?? false
         return isSplit
-            ? L10n.t("action.openInOtherPane", "Open in Other Pane")
-            : L10n.t("action.openInNewSplit", "Open in New Pane")
+            ? L10n.t("action.openInOtherPane", "Open in Other Panel")
+            : L10n.t("action.openInNewSplit", "Open in New Panel")
     }
 
     func contextMenu(for entry: FileEntry?) -> NSMenu {

@@ -61,8 +61,8 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
             return fileVC.selectedPaths().contains(where: Self.isDirectory)
         case #selector(toggleSplit(_:)):
             item.title = isSplit
-                ? L10n.t("view.mergePanes", "Merge Panes")
-                : L10n.t("view.splitPane", "Split Pane")
+                ? L10n.t("view.mergePanes", "Merge Panels")
+                : L10n.t("view.splitPane", "Split Panel")
             return true
         case #selector(focusOtherPane(_:)):
             return isSplit

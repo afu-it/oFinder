@@ -157,9 +157,9 @@
 "tab.next" = "Show Next Tab";
 "tab.previous" = "Show Previous Tab";
 "menu.view" = "View";
-"view.splitPane" = "Split Pane";
-"view.mergePanes" = "Merge Panes";
-"view.otherPane" = "Go to Other Pane";
+"view.splitPane" = "Split Panel";
+"view.mergePanes" = "Merge Panels";
+"view.otherPane" = "Go to Other Panel";
 "action.openInNewTab" = "Open in New Tab";
-"action.openInNewSplit" = "Open in New Pane";
-"action.openInOtherPane" = "Open in Other Pane";
+"action.openInNewSplit" = "Open in New Panel";
+"action.openInOtherPane" = "Open in Other Panel";

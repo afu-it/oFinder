@@ -802,8 +802,8 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
                 .isSplit ?? false
             let split = menu.addItem(
                 withTitle: isSplit
-                    ? L10n.t("action.openInOtherPane", "Open in Other Pane")
-                    : L10n.t("action.openInNewSplit", "Open in New Pane"),
+                    ? L10n.t("action.openInOtherPane", "Open in Other Panel")
+                    : L10n.t("action.openInNewSplit", "Open in New Panel"),
                 action: #selector(openClickedInNewSplit(_:)), keyEquivalent: "")
             split.target = self
         }
