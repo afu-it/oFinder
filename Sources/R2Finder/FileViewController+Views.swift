@@ -85,7 +85,7 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
                     return cell
                 }()
             cell.textField?.stringValue = entry.name
-            cell.imageView?.image = entry.icon
+            cell.imageView?.image = thumbnail(for: entry) ?? entry.icon
             cell.alphaValue = (FileClipboard.operation == .cut
                                && FileClipboard.paths.contains(entry.path)) ? 0.35 : 1.0
             return cell
@@ -224,8 +224,11 @@ extension FileViewController: NSCollectionViewDataSource, NSCollectionViewDelega
         if idx < entries.count {
             let entry = entries[idx]
             item.textField?.stringValue = entry.name
-            // Use a larger icon for icon view
-            if let icon = entry.icon?.copy() as? NSImage {
+            if let thumb = thumbnail(for: entry) {
+                item.imageView?.image = thumb
+            } else if let icon = entry.icon?.copy() as? NSImage {
+                // Type icon while the thumbnail generates, or forever if the
+                // file has no preview. Scaled up to fill the 64pt well.
                 icon.size = NSSize(width: 64, height: 64)
                 item.imageView?.image = icon
             }
@@ -352,6 +355,43 @@ extension FileViewController: MillerColumnViewDelegate {
 // ─────────────────────────────────────────────────────────────────────────────
 
 extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
+
+    /// Cached thumbnail if ready; otherwise nil now and a redraw of just this
+    /// row once QuickLook answers.
+    ///
+    /// Directories are skipped: QuickLook renders a folder as the folder icon,
+    /// which is what the fallback already shows, at the cost of a generation
+    /// request per folder.
+    func thumbnail(for entry: FileEntry) -> NSImage? {
+        guard !entry.isDir else { return nil }
+        if let ready = entry.thumbnail { return ready }
+        let image = ThumbnailService.shared.thumbnail(
+            for: entry.path, mtime: entry.mtime) { [weak self, weak entry] image in
+                guard let self, let entry else { return }
+                entry.thumbnail = image
+                self.redrawRow(for: entry)
+            }
+        entry.thumbnail = image
+        return image
+    }
+
+    /// Refreshes a single row rather than the whole view: thumbnails arrive
+    /// one at a time while scrolling, and a full reload per arrival would
+    /// fight the user's scroll and drop the selection.
+    private func redrawRow(for entry: FileEntry) {
+        switch viewMode {
+        case .icon:
+            guard let idx = entries.firstIndex(where: { $0 === entry }) else { return }
+            collectionView.reloadItems(at: [IndexPath(item: idx, section: 0)])
+        case .columns:
+            columnView.redraw(entry: entry)
+        default:
+            let row = outlineView.row(forItem: entry)
+            guard row >= 0 else { return }
+            outlineView.reloadData(forRowIndexes: IndexSet(integer: row),
+                                   columnIndexes: IndexSet(integersIn: 0..<outlineView.numberOfColumns))
+        }
+    }
 
     func contextMenu(for entry: FileEntry?) -> NSMenu {
         let menu = NSMenu(title: "")

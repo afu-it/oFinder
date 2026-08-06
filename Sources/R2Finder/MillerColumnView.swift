@@ -330,8 +330,27 @@ final class MillerColumnView: NSView, NSTableViewDataSource, NSTableViewDelegate
                 return cell
             }()
         cell.textField?.stringValue = entry.name
-        cell.imageView?.image = entry.icon
+        if entry.thumbnail == nil, !entry.isDir {
+            entry.thumbnail = ThumbnailService.shared.thumbnail(
+                for: entry.path, mtime: entry.mtime) { [weak self, weak entry] image in
+                    guard let self, let entry else { return }
+                    entry.thumbnail = image
+                    self.redraw(entry: entry)
+                }
+        }
+        cell.imageView?.image = entry.thumbnail ?? entry.icon
         return cell
+    }
+
+    /// Redraws the one row showing this entry, wherever it currently sits.
+    /// Used when a thumbnail arrives after the row was already drawn.
+    func redraw(entry: FileEntry) {
+        for column in columns {
+            guard let row = column.entries.firstIndex(where: { $0 === entry }) else { continue }
+            column.table.reloadData(forRowIndexes: IndexSet(integer: row),
+                                    columnIndexes: IndexSet(integer: 0))
+            return
+        }
     }
 
     // ── Drag source ─────────────────────────────────────────────────────────

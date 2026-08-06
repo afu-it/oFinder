@@ -20,6 +20,10 @@ final class FileEntry: @unchecked Sendable {
     var size: UInt64 = 0
     var mtime: Int64 = 0
     var icon: NSImage?
+    /// Picture of the contents, when QuickLook can make one. Separate from
+    /// `icon` so the type icon stays available as the fallback and while the
+    /// thumbnail is still being generated.
+    var thumbnail: NSImage?
     var children: [FileEntry] = []
     var childrenLoaded = false
 }
