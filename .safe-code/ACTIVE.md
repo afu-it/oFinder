@@ -21,6 +21,22 @@ pending: AFU to grant Full Disk Access and test the mouse thumb buttons;
 next_action: AFU tests FDA + thumb buttons; next features toward v0.0.2
   (AFU will say when to bump the version)
 
+## Afternoon session (same day)
+
+Also shipped, all pushed, release DMG refreshed twice to match:
+- v0.0.1 GitHub release with oFinder-0.0.1.dmg (bundle.sh died on the moved
+  r2_finder.png — the first DMG was a stale half-signed bundle; the png copy
+  is gone from bundle.sh, nothing reads it at runtime)
+- gh default repo was carmonac/r2_finder and nearly took the release; now
+  pinned to afu-it/oFinder
+- README reframed around cut/display/path-copy (SMB story demoted to the
+  rsync section), Cmd+X documented, comparison table vs upstream, language
+  list replaced with "follows your system language", Install points at the
+  DMG; repo About + 7 topics set
+- rename fixed: it only ever worked in list view — grid renames inline,
+  columns get a sheet; rename pre-selects the base name and leaves the
+  extension untouched (selectBaseName, UTF-16 lengths)
+
 ## Notes
 
 The app's identity changed in this session: bundle identifier
