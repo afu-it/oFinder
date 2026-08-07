@@ -8,7 +8,7 @@ completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
   and Cmd+[ / Cmd+] drive back and forward; the path bar can be copied from;
   renamed the app to oFinder on `dev.afuit.ofinder` at v0.0.1, carrying
   Favorites across; rewrote the 49 commits to the `afu-it` identity and pushed
-  it; renamed the checkout folder to `oFinder`
+  it
 pending: AFU to confirm the mouse thumb buttons work on his own mouse; decide
   what to do with the upstream tags mirrored into this fork; decide whether to
   rename the GitHub repo, still `afu-it/r2_finder`
@@ -29,3 +29,9 @@ SSH key is not scoped that way.
 
 `backup/pre-identity-rewrite` still holds the pre-rewrite commits. Delete it
 once the new history has proven itself.
+
+The checkout folder is still `r2_finder` and renaming it is deliberately left
+for last. A rename invalidates the build cache in both directions: SwiftPM
+bakes the absolute path into the module cache, so the first build after a move
+fails with "missing required module 'SwiftShims'". The fix is `rm -rf .build`.
+Any open editor window also keeps pointing at the path that no longer exists.

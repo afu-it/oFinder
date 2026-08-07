@@ -89,7 +89,7 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource,
     /// Drag type for reordering favourites. Distinct from .fileURL so a row
     /// drag and a file drop can be told apart at the drop site.
     private static let favoriteDragType =
-        NSPasteboard.PasteboardType("com.r2finder.favorite")
+        NSPasteboard.PasteboardType("dev.afuit.ofinder.favorite")
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 600))

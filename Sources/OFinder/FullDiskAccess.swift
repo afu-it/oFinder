@@ -58,7 +58,7 @@ enum FullDiskAccess {
     }
 
     /// Writes a report on whether the protected directories can actually be
-    /// read, when ~/Library/Caches/r2finder-probe-me exists.
+    /// read, when ~/Library/Caches/ofinder-probe-me exists.
     ///
     /// Worth keeping, because the obvious ways to check are both wrong. System
     /// Settings shows what was granted, not what applies — a stale entry keeps
@@ -72,7 +72,7 @@ enum FullDiskAccess {
     /// file rather than an environment variable, since `open` does not pass
     /// the environment through.
     static func runDiagnosticIfRequested() {
-        let marker = NSHomeDirectory() + "/Library/Caches/r2finder-probe-me"
+        let marker = NSHomeDirectory() + "/Library/Caches/ofinder-probe-me"
         guard FileManager.default.fileExists(atPath: marker) else { return }
         try? FileManager.default.removeItem(atPath: marker)
 
@@ -88,7 +88,7 @@ enum FullDiskAccess {
         report += "bundle: \(Bundle.main.bundlePath)\n"
         // Written before exiting, never from a defer: exit() ends the process
         // outright and defers do not run.
-        try? report.write(toFile: NSHomeDirectory() + "/Library/Caches/r2finder-fda.txt",
+        try? report.write(toFile: NSHomeDirectory() + "/Library/Caches/ofinder-fda.txt",
                           atomically: true, encoding: .utf8)
         exit(0)
     }

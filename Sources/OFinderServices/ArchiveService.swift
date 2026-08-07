@@ -20,7 +20,7 @@ public enum ArchiveService {
     public typealias CompletionHandler = TransferService.CompletionHandler
 
     /// Serializes all archive operations (replaces the old global lock).
-    private static let queue = DispatchQueue(label: "com.r2finder.archive")
+    private static let queue = DispatchQueue(label: "dev.afuit.ofinder.archive")
 
     @discardableResult
     public static func compress(sevenzzPath: String, sources: [String],

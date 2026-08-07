@@ -18,7 +18,7 @@ let sevenzzPath = repoRoot.appendingPathComponent("bin/7zz").path
 /// Create a unique scratch directory for one test; caller removes it.
 func makeScratchDir(_ name: String) throws -> String {
     let dir = FileManager.default.temporaryDirectory
-        .appendingPathComponent("r2finder-tests-\(name)-\(UUID().uuidString)").path
+        .appendingPathComponent("ofinder-tests-\(name)-\(UUID().uuidString)").path
     try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     return dir
 }

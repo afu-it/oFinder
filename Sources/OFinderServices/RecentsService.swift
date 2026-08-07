@@ -11,7 +11,7 @@ public enum RecentsService {
     /// code which hands it to FileManager fails loudly rather than silently
     /// listing some directory that happens to be named "recents". Callers
     /// that touch the disk must check `isRecents` first.
-    public static let locationID = "r2finder://recents"
+    public static let locationID = "ofinder://recents"
 
     public static func isRecents(_ path: String) -> Bool { path == locationID }
 

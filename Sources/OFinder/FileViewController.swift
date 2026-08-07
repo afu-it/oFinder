@@ -94,7 +94,7 @@ final class FileViewController: NSViewController {
     private var loadedShowHidden = FileViewController.showHidden
 
     // Loading
-    private let loadQueue = DispatchQueue(label: "com.r2finder.dirload")
+    private let loadQueue = DispatchQueue(label: "dev.afuit.ofinder.dirload")
     // nonisolated(unsafe): mutated only on the main actor; the background
     // icon/listing loops read it as an advisory early-exit check, where a
     // stale value is harmless (the main-actor guard re-checks on delivery).

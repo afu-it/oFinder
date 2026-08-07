@@ -53,7 +53,7 @@ final class TransferHandleTests: XCTestCase {
         // rsync forks, and the forks inherit the stdout pipe. Killing only
         // the parent leaves them holding it open, so run() never sees EOF —
         // and for a move they carry on deleting source files.
-        let marker = "r2finder-cancel-probe-\(ProcessInfo.processInfo.processIdentifier)"
+        let marker = "ofinder-cancel-probe-\(ProcessInfo.processInfo.processIdentifier)"
         let handle = TransferHandle()
         let child = Subprocess(
             executablePath: "/bin/sh",
