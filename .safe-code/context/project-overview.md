@@ -21,7 +21,7 @@ manager. [inferred: README.md rationale + the feature set that has been built]
 
 ## This fork
 
-`afu-it/r2_finder`, forked from `carmonac/r2_finder`. The upstream app shipped
+`afu-it/oFinder`, forked from `carmonac/r2_finder`. The upstream app shipped
 with every UI string hardcoded in Spanish and no localization at all; this fork
 made English the base language and kept Spanish as a translation, then added
 tabs, dual panes, a breadcrumb path bar, Recents, a Cloud section, Trash with

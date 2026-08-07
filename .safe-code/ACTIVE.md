@@ -10,8 +10,7 @@ completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
   Favorites across; rewrote the 49 commits to the `afu-it` identity and pushed
   it
 pending: AFU to confirm the mouse thumb buttons work on his own mouse; decide
-  what to do with the upstream tags mirrored into this fork; decide whether to
-  rename the GitHub repo, still `afu-it/r2_finder`
+  what to do with the upstream tags mirrored into this fork
 next_action: none blocking. Re-grant Full Disk Access to oFinder, then confirm
   the thumb buttons.
 

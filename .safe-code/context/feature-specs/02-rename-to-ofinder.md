@@ -31,8 +31,9 @@ rather than deleted, so the original is still there if the copy is ever wrong.
 
 ## Out of scope
 
-- Renaming the GitHub repository (`afu-it/r2_finder`) and the local checkout
-  folder. Both still carry the old name.
+- The local checkout folder, still `r2_finder`. Renaming it invalidates
+  SwiftPM's module cache, so it needs `rm -rf .build` and a reopened editor
+  window, which makes it a last-step job rather than a mid-session one.
 - The upstream tags `v1.0.0` through `v2.0.2` mirrored into this fork. They
   belong to `carmonac/r2_finder`, not to this project.
 
