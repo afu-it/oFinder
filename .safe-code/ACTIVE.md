@@ -4,18 +4,22 @@
 
 status: saved
 saved_at: 2026-08-07
-completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
-  and Cmd+[ / Cmd+] drive back and forward; the path bar can be copied from;
-  renamed the app to oFinder on `dev.afuit.ofinder` at v0.0.1, carrying
-  Favorites across; rewrote the 49 commits to the `afu-it` identity and pushed
-  it
-pending: AFU to confirm the mouse thumb buttons on his own mouse (copying the
-  path out of the breadcrumb bar is confirmed working); decide what to do with
-  the upstream tags mirrored into this fork; rename the local checkout folder
-next_action: (2026-08-07) folder renamed, `.build` rebuilt clean — build,
-  bundle 0.0.1, and install to /Applications all verified green with the
-  `oFinder Self-Signed` identity. Remaining: AFU grants Full Disk Access,
-  tests the mouse thumb buttons, decides on the upstream tags.
+completed: verified the renamed checkout builds clean; sticky sort (Recents
+  newest-first by default, any header click persists per context); columns
+  reordered to Name/Date/Type/Size, draggable, order+widths autosaved; Kind
+  renamed Type; folder Size cell blank; window opens 1200x700 and remembers
+  its size (fixed contentViewController squashing the frame to the 640 min,
+  and NSWindowController's cascade mode silently disabling frame autosave);
+  grid view is the first-run default and the last view mode is remembered;
+  bilingual README (EN + ms) with logo (docs/assets/logo.png) and badges;
+  tagged and pushed v0.0.1
+pending: AFU to grant Full Disk Access and test the mouse thumb buttons;
+  decide on carmonac's upstream tags v1.0.0-v2.0.2 (recommended: delete from
+  fork, they sit above our v0.0.1); old "R2 Finder Self-Signed" cert and
+  backup/pre-identity-rewrite branch can go once the new history has proven
+  itself
+next_action: AFU tests FDA + thumb buttons; next features toward v0.0.2
+  (AFU will say when to bump the version)
 
 ## Notes
 
