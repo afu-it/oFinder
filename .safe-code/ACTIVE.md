@@ -9,10 +9,11 @@ completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
   renamed the app to oFinder on `dev.afuit.ofinder` at v0.0.1, carrying
   Favorites across; rewrote the 49 commits to the `afu-it` identity and pushed
   it
-pending: AFU to confirm the mouse thumb buttons work on his own mouse; decide
-  what to do with the upstream tags mirrored into this fork
-next_action: none blocking. Re-grant Full Disk Access to oFinder, then confirm
-  the thumb buttons.
+pending: AFU to confirm the mouse thumb buttons on his own mouse (copying the
+  path out of the breadcrumb bar is confirmed working); decide what to do with
+  the upstream tags mirrored into this fork; rename the local checkout folder
+next_action: rename the checkout folder to `oFinder`, wipe `.build`, and
+  reopen it. Then re-grant Full Disk Access and try the thumb buttons.
 
 ## Notes
 

@@ -8,8 +8,9 @@ _no active session_
 
 ## Carry Forward
 
-Nothing outstanding. Full Disk Access still has to be granted to oFinder, and
-AFU has not yet confirmed the mouse thumb buttons on his own mouse.
+Copying the path out of the breadcrumb bar is confirmed working. Still open:
+Full Disk Access has to be granted to oFinder, the mouse thumb buttons have not
+been tried on real hardware, and the checkout folder is still `r2_finder`.
 
 ## Draft Updates
 
