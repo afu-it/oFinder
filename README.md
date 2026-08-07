@@ -65,7 +65,7 @@ A pleasant side effect is that copies to Samba/NAS shares finish reliably (no er
 
 ## Install
 
-No packaged release yet. oFinder restarted at v0.0.1 under its own name, and a DMG will appear on the [releases page](https://github.com/afu-it/oFinder/releases) once one is built. Until then, build from source below.
+Grab the DMG from the [latest release](https://github.com/afu-it/oFinder/releases/latest), open it, and drag **oFinder.app** into the Applications folder. Prefer building it yourself? See [Building from source](#building-from-source).
 
 The app is not notarized, so macOS quarantines it on first launch. Clear the flag before opening:
 

@@ -65,7 +65,7 @@ Kesan sampingan yang menyenangkan: salinan ke Samba/NAS siap dengan boleh diperc
 
 ## Pasang
 
-Belum ada release berbungkus. oFinder mula semula pada v0.0.1 bawah nama sendiri, dan DMG akan muncul di [halaman releases](https://github.com/afu-it/oFinder/releases) bila siap dibina. Buat masa ini, bina dari sumber ikut langkah di bawah.
+Muat turun DMG dari [release terkini](https://github.com/afu-it/oFinder/releases/latest), buka, dan tarik **oFinder.app** ke folder Applications. Nak bina sendiri? Tengok [Bina dari sumber](#bina-dari-sumber).
 
 App ini tidak dinotarikan, jadi macOS kuarantin ia pada pelancaran pertama. Buang flag itu sebelum buka:
 

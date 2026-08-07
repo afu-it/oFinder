@@ -7,7 +7,7 @@
 #   └── Contents/
 #       ├── Info.plist
 #       ├── MacOS/ofinder
-#       └── Resources/{AppIcon.icns, r2_finder.png, 7zz, rsync}
+#       └── Resources/{AppIcon.icns, 7zz, rsync}
 #
 # Usage:  Scripts/bundle.sh [version] [config]
 #   version  App version for Info.plist, tag-style "v1.4.3" accepted
@@ -71,9 +71,8 @@ PLIST
 # 2) Executable
 cp "$BINARY" "$APP/Contents/MacOS/ofinder"
 
-# 3) Resources: icon, logo, bundled 7zz + rsync
+# 3) Resources: icon, bundled 7zz + rsync
 cp AppIcon.icns  "$APP/Contents/Resources/AppIcon.icns"
-cp r2_finder.png "$APP/Contents/Resources/r2_finder.png"
 cp bin/7zz       "$APP/Contents/Resources/7zz"
 cp bin/rsync     "$APP/Contents/Resources/rsync"
 chmod 755 "$APP/Contents/Resources/7zz" "$APP/Contents/Resources/rsync"
