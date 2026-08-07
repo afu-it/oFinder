@@ -4,13 +4,13 @@
 
 # oFinder
 
-A macOS file manager that copies over SMB without breaking.
+A macOS file manager with the small things Finder refuses to do.
 
 [![Version](https://img.shields.io/badge/version-0.0.1-blue)](https://github.com/afu-it/oFinder/releases)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)](#requirements)
 [![Swift](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](#building-from-source)
 [![UI](https://img.shields.io/badge/UI-AppKit-8A2BE2)](#architecture)
-[![Transfers](https://img.shields.io/badge/transfers-rsync-2E8B57)](#why-rsync-works-where-finder-doesnt)
+[![Transfers](https://img.shields.io/badge/transfers-rsync-2E8B57)](#transfers-go-through-rsync)
 
 **English** · [Bahasa Melayu](README.ms.md)
 
@@ -20,26 +20,24 @@ A macOS file manager that copies over SMB without breaking.
 
 ## Why this exists
 
-Copy a large folder to a NAS or Samba share with Finder and sooner or later you hit this:
+Finder has refused to do the same small things for twenty years. You can't cut a file with Cmd+X. You can't select the path in the title bar and copy it. And it forgets how you like things shown: sort order, column layout, window size.
 
-> *"The operation can't be completed because an unexpected error occurred (error code -36)."*
+oFinder is a Finder replacement built around exactly those annoyances:
 
-Sometimes there is no error at all. The transfer stalls partway and leaves half-written files on the share. The cause is that Finder insists on copying macOS-specific metadata (resource forks, extended attributes, `.DS_Store` entries) along with the file data, and plenty of SMB configurations reject those writes.
+- Cut with Cmd+X, paste to move, the way every other platform does it
+- A path bar you can select and copy a path out of
+- A display that keeps your choices: sort order, column order and widths, view mode, and window size all persist
+- Recents that opens with the newest files on top
 
-oFinder is a file manager that routes every copy and move through `rsync` instead of the Finder copy APIs. Transfers to Samba shares finish, and when one gets interrupted, it resumes instead of starting over.
+## Transfers go through rsync
 
-## Why rsync works where Finder doesn't
-
-macOS ships `/usr/bin/rsync` as a first-class tool. oFinder invokes it as:
+The transfer engine is inherited from the project this one forked from: every copy and move runs through `/usr/bin/rsync` rather than the Finder copy APIs.
 
 ```
 rsync -a -P [--ignore-existing] [--remove-source-files] <sources> <destination>/
 ```
 
-- `-a` (archive mode) preserves permissions, timestamps, and symlinks without pushing the macOS resource forks that Samba rejects
-- `-P` resumes interrupted transfers and reports per-file progress
-- `--ignore-existing` copies without overwriting when no collision override is chosen
-- `--remove-source-files` deletes the source only after the destination is fully written, so a move can't lose data halfway
+A pleasant side effect is that copies to Samba/NAS shares finish reliably (no error -36, which Finder triggers by pushing macOS metadata many SMB servers reject), interrupted transfers resume instead of starting over, and a move deletes the source only after the destination is fully written.
 
 ## Features
 

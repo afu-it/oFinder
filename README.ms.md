@@ -4,13 +4,13 @@
 
 # oFinder
 
-Pengurus fail macOS yang salin ke SMB tanpa masalah.
+Pengurus fail macOS dengan benda-benda kecil yang Finder tak mahu buat.
 
 [![Version](https://img.shields.io/badge/versi-0.0.1-blue)](https://github.com/afu-it/oFinder/releases)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)](#keperluan)
 [![Swift](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](#bina-dari-sumber)
 [![UI](https://img.shields.io/badge/UI-AppKit-8A2BE2)](#seni-bina)
-[![Transfers](https://img.shields.io/badge/pemindahan-rsync-2E8B57)](#kenapa-rsync-boleh-finder-tak-boleh)
+[![Transfers](https://img.shields.io/badge/pemindahan-rsync-2E8B57)](#pemindahan-melalui-rsync)
 
 [English](README.md) · **Bahasa Melayu**
 
@@ -20,26 +20,24 @@ Pengurus fail macOS yang salin ke SMB tanpa masalah.
 
 ## Kenapa app ini wujud
 
-Salin folder besar ke NAS atau Samba share guna Finder, lambat laun keluar benda ini:
+Dua puluh tahun Finder tak mahu buat benda-benda kecil yang sama. Tak boleh cut fail dengan Cmd+X. Tak boleh pilih dan salin laluan dari bar tajuk. Dan ia lupa cara anda suka paparan: susunan sort, susun atur lajur, saiz tetingkap.
 
-> *"The operation can't be completed because an unexpected error occurred (error code -36)."*
+oFinder ialah pengganti Finder yang dibina khusus untuk benda-benda itu:
 
-Kadang-kadang tiada ralat langsung. Pemindahan tersangkut separuh jalan dan tinggalkan fail separuh siap atas share. Puncanya: Finder berkeras nak salin metadata khusus macOS (resource fork, extended attribute, entri `.DS_Store`) bersama data fail, dan banyak konfigurasi SMB menolak tulisan itu.
+- Cut dengan Cmd+X, paste untuk pindah, macam semua platform lain
+- Bar laluan yang boleh dipilih dan disalin laluannya
+- Paparan yang ingat pilihan anda: susunan sort, susunan dan lebar lajur, mod paparan, saiz tetingkap semuanya kekal
+- Recents yang buka dengan fail terbaru di atas
 
-oFinder ialah pengurus fail yang hantar setiap operasi salin dan pindah melalui `rsync`, bukan API salin Finder. Pemindahan ke Samba share siap sampai habis, dan kalau terputus, ia sambung semula, bukan mula dari kosong.
+## Pemindahan melalui rsync
 
-## Kenapa rsync boleh, Finder tak boleh
-
-macOS memang sediakan `/usr/bin/rsync`. oFinder panggil ia begini:
+Enjin pemindahan diwarisi dari projek asal fork ini: setiap salin dan pindah berjalan melalui `/usr/bin/rsync`, bukan API salin Finder.
 
 ```
 rsync -a -P [--ignore-existing] [--remove-source-files] <sumber> <destinasi>/
 ```
 
-- `-a` (mod arkib) kekalkan permission, timestamp dan symlink tanpa cuba tolak resource fork macOS yang Samba tolak
-- `-P` sambung semula pemindahan terputus dan lapor kemajuan setiap fail
-- `--ignore-existing` salin tanpa tindih bila tiada pilihan ganti dibuat
-- `--remove-source-files` padam sumber hanya selepas destinasi siap ditulis penuh, jadi operasi pindah tak akan hilangkan data separuh jalan
+Kesan sampingan yang menyenangkan: salinan ke Samba/NAS siap dengan boleh dipercayai (tiada error -36, yang Finder cetuskan sebab tolak metadata macOS yang banyak server SMB tolak), pemindahan terputus sambung semula bukan mula dari kosong, dan operasi pindah padam sumber hanya selepas destinasi siap ditulis penuh.
 
 ## Ciri-ciri
 
