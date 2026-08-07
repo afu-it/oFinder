@@ -11,7 +11,7 @@
 # from one build to the next.
 set -euo pipefail
 
-NAME="${1:-R2 Finder Self-Signed}"
+NAME="${1:-oFinder Self-Signed}"
 
 if security find-identity -v -p codesigning | grep -qF "$NAME"; then
     echo "already present: $NAME"

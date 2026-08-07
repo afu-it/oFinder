@@ -1,6 +1,6 @@
 # AGENTS.md
 
-R2 Finder — a macOS file manager written in Swift + AppKit. It exists because
+oFinder — a macOS file manager written in Swift + AppKit. It exists because
 Finder's copy path breaks on SMB shares; every transfer here goes through
 `rsync` instead.
 
@@ -24,18 +24,18 @@ Run these in order; each depends on the one before.
 ```bash
 Scripts/make-signing-cert.sh    # once per machine — see below
 swift build -c release          # must run OUTSIDE a sandbox — see below
-Scripts/bundle.sh 2.0.2 release # <version> <config>; both optional,
+Scripts/bundle.sh 0.0.1 release # <version> <config>; both optional,
                                 # default 0.0.0-dev and release
 Scripts/install.sh              # no arguments; quits the app, dittos
-                                # .build/R2 Finder.app into /Applications
-open -a "R2 Finder"              # always launch this way, never the binary
+                                # .build/oFinder.app into /Applications
+open -a "oFinder"              # always launch this way, never the binary
 ```
 
 `install.sh` does not build or bundle — it copies whatever `bundle.sh` last
-produced, and errors out if `.build/R2 Finder.app` is absent.
+produced, and errors out if `.build/oFinder.app` is absent.
 
 Launch through `open`, not by running
-`.../Contents/MacOS/rs_2finder` directly: TCC attributes a request to the
+`.../Contents/MacOS/ofinder` directly: TCC attributes a request to the
 responsible process, so a terminal-launched binary reports the terminal's
 permissions rather than the app's.
 

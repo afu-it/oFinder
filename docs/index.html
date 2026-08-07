@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>R2 Finder — A Finder replacement for macOS that actually works with SMB / Samba shares</title>
-<meta name="description" content="R2 Finder is a free, open-source Finder alternative for macOS. It uses rsync under the hood so copying and moving files to Samba (SMB) shares and NAS devices just works — no more -36 errors, no more stalled transfers." />
-<meta name="keywords" content="macOS Finder replacement, SMB error -36, Samba NAS macOS, Finder alternative, rsync macOS, copy to NAS macOS, R2 Finder, open source Finder" />
+<title>oFinder — A Finder replacement for macOS that actually works with SMB / Samba shares</title>
+<meta name="description" content="oFinder is a free, open-source Finder alternative for macOS. It uses rsync under the hood so copying and moving files to Samba (SMB) shares and NAS devices just works — no more -36 errors, no more stalled transfers." />
+<meta name="keywords" content="macOS Finder replacement, SMB error -36, Samba NAS macOS, Finder alternative, rsync macOS, copy to NAS macOS, oFinder, open source Finder" />
 <meta name="author" content="Carlos Merchán" />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://carmonac.github.io/r2_finder/" />
 
 <!-- Open Graph / Social -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="R2 Finder — Finder replacement for macOS with reliable SMB / Samba copy" />
+<meta property="og:title" content="oFinder — Finder replacement for macOS with reliable SMB / Samba copy" />
 <meta property="og:description" content="Free, open-source Finder alternative for macOS. Uses rsync so Samba / NAS transfers never fail with error -36." />
 <meta property="og:image" content="https://carmonac.github.io/r2_finder/screenshot.png" />
 <meta property="og:url" content="https://carmonac.github.io/r2_finder/" />
@@ -261,9 +261,9 @@
 
 <header>
   <div class="inner">
-    <img class="logo" src="r2_finder.png" alt="R2 Finder logo" />
+    <img class="logo" src="r2_finder.png" alt="oFinder logo" />
     <div class="title">
-      <h1>R2 Finder</h1>
+      <h1>oFinder</h1>
       <p>A Finder replacement for macOS that just works with SMB / NAS</p>
     </div>
     <nav>
@@ -280,7 +280,7 @@
   <section class="hero">
     <h2>Stop fighting Finder when copying to your NAS.</h2>
     <p class="tagline">
-      R2 Finder is a free, open-source file manager for macOS that replaces Finder's broken SMB copy
+      oFinder is a free, open-source file manager for macOS that replaces Finder's broken SMB copy
       stack with <code>rsync</code>. No more cryptic <code>error code -36</code>, no more
       stalled transfers, no more <code>.DS_Store</code> noise on your server.
     </p>
@@ -288,7 +288,7 @@
       <a class="btn primary" href="https://github.com/carmonac/r2_finder/releases/latest">Download latest DMG</a>
       <a class="btn" href="https://github.com/carmonac/r2_finder">View on GitHub</a>
     </div>
-    <img class="screenshot" src="screenshot.png" alt="R2 Finder app running on macOS, showing the sidebar with favourites, devices and network shares, and a grid view of the root filesystem." />
+    <img class="screenshot" src="screenshot.png" alt="oFinder app running on macOS, showing the sidebar with favourites, devices and network shares, and a grid view of the root filesystem." />
   </section>
 
   <section id="why">
@@ -313,9 +313,9 @@
       mishandle those writes.
     </p>
 
-    <h3>How R2 Finder solves it</h3>
+    <h3>How oFinder solves it</h3>
     <p>
-      R2 Finder uses <strong><code>rsync</code></strong> for every copy and move operation. It
+      oFinder uses <strong><code>rsync</code></strong> for every copy and move operation. It
       ships with a bundled <code>rsync</code> binary and invokes it with archive mode:
     </p>
     <pre><code>rsync -a -P [--ignore-existing] [--remove-source-files] &lt;sources&gt; &lt;destination&gt;/</code></pre>
@@ -338,7 +338,7 @@
       <li><strong>Resume interrupted transfers</strong> — partial files are picked up where they left off, no need to restart a multi-GB copy from zero.</li>
       <li><strong>Cut / Copy / Paste</strong> — standard <code>⌘C</code> / <code>⌘X</code> / <code>⌘V</code>, compatible with files copied from macOS Finder itself.</li>
       <li><strong>Force-move on paste</strong> — hold <code>Option</code> while pasting to move instead of copy.</li>
-      <li><strong>Drag and drop</strong> — between R2 Finder windows and from/to other applications.</li>
+      <li><strong>Drag and drop</strong> — between oFinder windows and from/to other applications.</li>
       <li><strong>Quick Look preview</strong> — press <code>Space</code> to preview any file, just like Finder.</li>
       <li><strong>Multiple view modes</strong> — icon grid, list view, and column view (Miller columns).</li>
       <li><strong>Smart sidebar</strong> — favourites (Home, Desktop, Documents, Downloads…), mounted volumes that auto-refresh on mount/unmount, and discovered SMB shares on the local network.</li>
@@ -359,7 +359,7 @@
     <ul class="features">
       <li><strong>NAS owners</strong> — Synology, QNAP, TrueNAS, Unraid, Asustor, or any self-hosted Samba server.</li>
       <li><strong>Homelab users</strong> — anyone who has ever shouted at Finder while moving media files to a home server.</li>
-      <li><strong>Video editors and photographers</strong> — copying large assets to network storage is a daily pain. R2 Finder makes it boringly reliable.</li>
+      <li><strong>Video editors and photographers</strong> — copying large assets to network storage is a daily pain. oFinder makes it boringly reliable.</li>
       <li><strong>Small studios and offices</strong> — sharing files across a LAN via Samba without buying a macOS server.</li>
       <li><strong>Anyone fed up with error -36</strong> — if you've Googled that error number, this app is for you.</li>
     </ul>
@@ -368,14 +368,14 @@
   <section id="download">
     <h2>Download and install</h2>
     <p>
-      R2 Finder requires <strong>macOS 13 (Ventura)</strong> or later and runs natively on Apple
+      oFinder requires <strong>macOS 13 (Ventura)</strong> or later and runs natively on Apple
       Silicon.
     </p>
     <p>
       <a class="btn primary" href="https://github.com/carmonac/r2_finder/releases/latest">Download the latest DMG from GitHub Releases</a>
     </p>
     <p>
-      Open the <code>.dmg</code>, then drag <strong>R2 Finder.app</strong> to your
+      Open the <code>.dmg</code>, then drag <strong>oFinder.app</strong> to your
       <code>/Applications</code> folder.
     </p>
 
@@ -383,7 +383,7 @@
       <strong>First launch — important:</strong> because the app is not notarized, macOS will
       quarantine it the first time you open it. Run this command in Terminal once, before
       launching it:
-      <pre><code>xattr -d com.apple.quarantine /Applications/R2\ Finder.app</code></pre>
+      <pre><code>xattr -d com.apple.quarantine /Applications/oFinder.app</code></pre>
       After that, open it like any other app.
     </div>
   </section>
@@ -400,12 +400,12 @@
     <h3>Does it replace Finder?</h3>
     <p>
       No — it runs alongside Finder. You can keep using Finder for everything else and only open
-      R2 Finder when you need to copy or move files to a Samba share.
+      oFinder when you need to copy or move files to a Samba share.
     </p>
 
     <h3>Why not just use the command line?</h3>
     <p>
-      You absolutely can, and many people do. R2 Finder exists for everyone who prefers a graphical
+      You absolutely can, and many people do. oFinder exists for everyone who prefers a graphical
       file manager, needs drag-and-drop, or shares a Mac with less technical family members /
       coworkers.
     </p>
@@ -434,7 +434,7 @@
 
 <footer>
   <p>
-    R2 Finder · Open source on <a href="https://github.com/carmonac/r2_finder">GitHub</a> ·
+    oFinder · Open source on <a href="https://github.com/carmonac/r2_finder">GitHub</a> ·
     Report issues <a href="https://github.com/carmonac/r2_finder/issues">here</a>
   </p>
 </footer>

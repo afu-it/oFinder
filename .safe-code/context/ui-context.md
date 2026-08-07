@@ -3,7 +3,7 @@
 ## Shape
 
 AppKit, programmatic — no storyboards, no nibs. Views are built in code with
-Auto Layout constraints. [extracted: Sources/R2Finder]
+Auto Layout constraints. [extracted: Sources/OFinder]
 
 ## Conventions learned the hard way
 

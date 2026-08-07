@@ -34,6 +34,16 @@ Do not narrate. `// increment the counter` would be deleted in review.
 - `nonisolated(unsafe)` appears only where a value is written on the main actor
   and read as an advisory hint elsewhere; each use carries a comment saying so.
 
+## Menu actions
+
+An action that macOS already has a selector for uses that selector, exposed
+with `@objc(copy:)` and friends rather than a private name. Anything with a
+text field in it — the path bar, inline rename — implements the standard ones
+itself, so a private name means the keystroke never reaches the field and the
+menu item simply sits disabled. App-specific commands (`copyPathsAsText:`,
+`undoLastMove:`) keep their own names.
+[extracted: Sources/OFinder/FileViewController.swift]
+
 ## Errors
 
 Never fail silently. A refused directory, a missing binary, or a failed restore
@@ -42,6 +52,6 @@ destructive, and destructive buttons set `hasDestructiveAction`.
 
 ## Tests
 
-Pure logic lives in `R2FinderServices` and gets XCTest coverage. Tests name the
+Pure logic lives in `OFinderServices` and gets XCTest coverage. Tests name the
 behaviour, not the method: `testPushingFromTheMiddleDropsTheForwardBranch`, not
 `testPush`.

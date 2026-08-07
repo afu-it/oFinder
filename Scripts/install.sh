@@ -11,8 +11,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-SRC=".build/R2 Finder.app"
-DST="/Applications/R2 Finder.app"
+SRC=".build/oFinder.app"
+DST="/Applications/oFinder.app"
 
 if [[ ! -d "$SRC" ]]; then
     echo "error: $SRC not found – run Scripts/bundle.sh first" >&2
@@ -21,7 +21,7 @@ fi
 
 # Quit first: a running app holds its executable, and replacing it underneath
 # leaves the old code running until the next launch.
-killall rs_2finder 2>/dev/null || true
+killall ofinder 2>/dev/null || true
 sleep 1
 
 ditto "$SRC" "$DST"

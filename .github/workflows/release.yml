@@ -29,16 +29,16 @@ jobs:
       - name: Create DMG
         run: |
           mkdir dmg_staging
-          cp -r ".build/R2 Finder.app" dmg_staging/
+          cp -r ".build/oFinder.app" dmg_staging/
           # Symlink so the user can drag straight to Applications
           ln -s /Applications dmg_staging/Applications
 
           hdiutil create \
-            -volname "R2 Finder" \
+            -volname "oFinder" \
             -srcfolder dmg_staging \
             -ov \
             -format UDZO \
-            "R2.Finder.dmg"
+            "oFinder.dmg"
 
       # ── GitHub Release ─────────────────────────────────────────────────────
       - name: Create GitHub release and upload DMG
@@ -46,8 +46,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            "R2.Finder.dmg#R2 Finder – macOS DMG" \
-            --title "R2 Finder ${{ github.ref_name }}" \
+            "oFinder.dmg#oFinder – macOS DMG" \
+            --title "oFinder ${{ github.ref_name }}" \
             --generate-notes
 
       # ── Update README on main ──────────────────────────────────────────────
@@ -57,7 +57,7 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           REPO="${{ github.repository }}"
-          DMG_URL="https://github.com/${REPO}/releases/download/${TAG}/R2.Finder.dmg"
+          DMG_URL="https://github.com/${REPO}/releases/download/${TAG}/oFinder.dmg"
 
           # Switch to main so the commit lands there, not on the detached tag.
           git fetch origin main
@@ -72,15 +72,15 @@ jobs:
           <!-- DOWNLOAD_SECTION_START -->
           ## Download
 
-          [**R2 Finder {tag} — Download DMG**]({dmg_url})
+          [**oFinder {tag} — Download DMG**]({dmg_url})
 
-          Drag **R2 Finder.app** from the DMG to your `/Applications` folder.
+          Drag **oFinder.app** from the DMG to your `/Applications` folder.
 
           **Important:** Since the application is not notarized, macOS will quarantine it the
           first time. Run this command in Terminal **before** opening it:
 
           ```bash
-          xattr -d com.apple.quarantine /Applications/R2\\ Finder.app
+          xattr -d com.apple.quarantine /Applications/oFinder.app
           ```
           <!-- DOWNLOAD_SECTION_END -->"""
 

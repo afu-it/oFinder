@@ -9,23 +9,23 @@ Swift 6, AppKit, SwiftPM. No SwiftUI. Minimum macOS 13.
 
 | Target | Path | Role |
 |---|---|---|
-| `rs_2finder` | `Sources/R2Finder` | Executable: AppKit UI. Named to match `CFBundleExecutable`. |
-| `R2FinderServices` | `Sources/R2FinderServices` | Library: filesystem, transfers, archives, queries. No AppKit. |
-| `R2FinderTests` | `Tests/R2FinderTests` | Depends on `R2FinderServices` only. |
+| `ofinder` | `Sources/OFinder` | Executable: AppKit UI. Named to match `CFBundleExecutable`. |
+| `OFinderServices` | `Sources/OFinderServices` | Library: filesystem, transfers, archives, queries. No AppKit. |
+| `OFinderTests` | `Tests/OFinderTests` | Depends on `OFinderServices` only. |
 
 [extracted: Package.swift]
 
 ## The boundary that matters
 
-`R2FinderServices` does not import AppKit, and the test target depends only on
+`OFinderServices` does not import AppKit, and the test target depends only on
 it. That is why pure logic gets real tests — `NavigationHistory`, `PathCrumbs`,
 `TransferGuard`, `TrashIndex`, `DirectoryLister`, `ProgressParsers` — while
 anything needing a window does not. When a piece of logic is worth testing, it
-belongs in the service layer. [extracted: Package.swift, Tests/R2FinderTests/]
+belongs in the service layer. [extracted: Package.swift, Tests/OFinderTests/]
 
 ## Navigation map
 
-**UI (`Sources/R2Finder`)**
+**UI (`Sources/OFinder`)**
 
 - `App.swift` — entry point, main menu, app delegate
 - `FinderWindowController.swift` — window, toolbar, owns the panes; holds no
@@ -43,9 +43,9 @@ belongs in the service layer. [extracted: Package.swift, Tests/R2FinderTests/]
 - `ThumbnailService.swift` — QuickLook thumbnails, on demand
 - `FullDiskAccess.swift` — detection, explanation, and the diagnostic probe
 
-**Services (`Sources/R2FinderServices`)**
+**Services (`Sources/OFinderServices`)**
 
-Every file below is `Sources/R2FinderServices/<Name>.swift`.
+Every file below is `Sources/OFinderServices/<Name>.swift`.
 
 - `TransferService` — rsync copy/move; `ArchiveService` — 7zz
 - `TransferGuard` — refuses a destination inside its own source
@@ -53,6 +53,8 @@ Every file below is `Sources/R2FinderServices/<Name>.swift`.
   not the same as empty
 - `RecentsService` — Spotlight `MDQuery`; `TrashIndex` — reads put-back records
   out of `~/.Trash/.DS_Store`
+- `TransferHandle` — cancels a job that has not spawned its child yet; the
+  cancel is remembered and applied on attach
 - `VolumeService`, `CloudService`, `TrashService`, `NavigationHistory`,
   `PathCrumbs`, `Subprocess`, `ProgressParsers`
 
@@ -60,12 +62,12 @@ Every file below is `Sources/R2FinderServices/<Name>.swift`.
 resolves per module, so one shared helper would read the wrong bundle:
 
 ```
-Sources/R2Finder/Localization.swift          + Resources/{en,es}.lproj/Localizable.strings
-Sources/R2FinderServices/Localization.swift  + Resources/{en,es}.lproj/Localizable.strings
+Sources/OFinder/Localization.swift          + Resources/{en,es}.lproj/Localizable.strings
+Sources/OFinderServices/Localization.swift  + Resources/{en,es}.lproj/Localizable.strings
 ```
 
-A UI string goes in the R2Finder pair; a message produced by the service layer
-goes in the R2FinderServices pair.
+A UI string goes in the OFinder pair; a message produced by the service layer
+goes in the OFinderServices pair.
 
 ## Bundled binaries
 
@@ -77,6 +79,11 @@ goes in the R2FinderServices pair.
 - Every copy and move goes through rsync. Do not reach for
   `FileManager.copyItem` for user-initiated transfers — the SMB failures are
   the reason this project exists.
+- Any long-running job the user can see must be stoppable. `TransferService`
+  and `ArchiveService` return a `TransferHandle`; the progress window holds it
+  and both Cancel and the window's close button go through it. A window that
+  disappears while its child keeps running is the bug this replaced.
+  [extracted: Sources/OFinderServices/TransferHandle.swift]
 - Anything that reads or writes a location must tolerate being refused. TCC
   protects `~/.Trash` and more; "cannot read" must never render as "empty".
 - Localization: user-facing strings go through `L10n.t`/`L10n.f` with the

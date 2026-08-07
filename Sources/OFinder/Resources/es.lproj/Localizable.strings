@@ -1,0 +1,183 @@
+/* oFinder — es */
+
+
+/* MARK: action */
+"action.compress" = "Comprimir";
+"action.copy" = "Copiar";
+"action.cut" = "Cortar";
+"action.extract" = "Descomprimir";
+"action.getInfo" = "Obtener informacion";
+"action.goToFolder" = "Ir a carpeta";
+"action.hideHiddenFiles" = "Ocultar archivos ocultos";
+"action.moveHere" = "Trasladar aquí";
+"action.moveToTrash" = "Mover a la papelera";
+"action.newFolder" = "Nueva carpeta";
+"action.open" = "Abrir";
+"action.paste" = "Pegar";
+"action.rename" = "Renombrar";
+"action.revealInFinder" = "Mostrar en Finder";
+"action.selectAll" = "Seleccionar todo";
+"action.showHidden" = "Mostrar ocultos";
+"action.showHiddenFiles" = "Mostrar archivos ocultos";
+"action.splitIntoParts" = "Dividir en partes";
+
+/* MARK: button */
+"button.cancel" = "Cancelar";
+"button.close" = "Cerrar";
+"button.create" = "Crear";
+"button.delete" = "Eliminar";
+"button.go" = "Ir";
+"button.keepBoth" = "Mantener ambos";
+"button.replace" = "Reemplazar";
+"button.split" = "Dividir";
+
+/* MARK: column */
+"column.dateModified" = "Fecha de modificación";
+"column.kind" = "Tipo";
+"column.name" = "Nombre";
+"column.size" = "Tamaño";
+
+/* MARK: conflict */
+"conflict.body" = "Deseas reemplazar los archivos existentes?";
+"conflict.title" = "Ya existe un elemento con ese nombre";
+
+/* MARK: delete */
+"delete.body" = "Este volumen no tiene papelera. Esta acción no se puede deshacer.";
+"delete.confirmMany" = "%d elementos se eliminarán permanentemente.";
+"delete.confirmOne" = "\"%@\" se eliminará permanentemente.";
+
+/* MARK: error */
+"error.7zzMissing" = "No se encontró el binario 7zz";
+"error.operationFailed" = "Operacion fallida";
+"error.rsyncMissing" = "No se encontró el binario rsync";
+
+/* MARK: goTo */
+"goTo.notFoundBody" = "La ruta '%@' no existe o no es una carpeta.";
+"goTo.notFoundTitle" = "Carpeta no encontrada";
+"goTo.placeholder" = "~/Documentos  o  /usr/local/bin";
+"goTo.prompt" = "Escribe la ruta a la que deseas navegar:";
+"goTo.title" = "Ir a la carpeta";
+
+/* MARK: info */
+"info.created" = "Creado";
+"info.kind" = "Tipo";
+"info.location" = "Ubicación";
+"info.modified" = "Modificado";
+"info.permissions" = "Permisos";
+"info.size" = "Tamaño";
+"info.sizeWithFileCount" = "%@ (%d archivos)";
+
+/* MARK: kind */
+"kind.file" = "Archivo";
+"kind.fileWithExtension" = "Archivo %@";
+"kind.folder" = "Carpeta";
+
+/* MARK: menu */
+"menu.about" = "Acerca de oFinder";
+"menu.bringAllToFront" = "Traer todo al frente";
+"menu.closeWindow" = "Cerrar ventana";
+"menu.edit" = "Edición";
+"menu.file" = "Archivo";
+"menu.goToFolderEllipsis" = "Ir a la carpeta…";
+"menu.hide" = "Ocultar oFinder";
+"menu.hideOthers" = "Ocultar otros";
+"menu.minimize" = "Minimizar";
+"menu.newWindow" = "Nueva ventana";
+"menu.quit" = "Salir de oFinder";
+"menu.services" = "Servicios";
+"menu.showAll" = "Mostrar todo";
+"menu.window" = "Ventana";
+
+/* MARK: newFolder */
+"newFolder.prompt" = "Nombre de la nueva carpeta:";
+"newFolder.untitled" = "Carpeta sin titulo";
+
+/* MARK: progress */
+"progress.calculating" = "Calculando…";
+"progress.cancelling" = "Cancelando…";
+"progress.compressing" = "Comprimiendo";
+"progress.copying" = "Copiando";
+"progress.destination" = "Destino: %@";
+"progress.extracting" = "Descomprimiendo";
+"progress.failedTitle" = "Error en la operación";
+"progress.loading" = "Cargando…";
+"progress.moving" = "Moviendo";
+"progress.splitting" = "Dividiendo";
+"progress.stillStopping" = "Deteniendo…";
+"progress.stillStoppingDetail" = "oFinder no pudo confirmar que se detuvo. Puedes cerrar esta ventana.";
+"progress.syncing" = "%@   Sincronizando…";
+"progress.unknownError" = "Error desconocido";
+
+/* MARK: sidebar */
+"sidebar.applications" = "Aplicaciones";
+"sidebar.desktop" = "Escritorio";
+"sidebar.devices" = "DISPOSITIVOS";
+"sidebar.documents" = "Documentos";
+"sidebar.downloads" = "Descargas";
+"sidebar.favorites" = "FAVORITOS";
+"sidebar.home" = "Inicio";
+"sidebar.movies" = "Películas";
+"sidebar.music" = "Música";
+"sidebar.recents" = "Recientes";
+"sidebar.pictures" = "Imágenes";
+
+/* MARK: split */
+"split.invalid" = "El tamaño debe ser un número mayor que 0";
+"split.placeholder" = "Ej: 100";
+"split.prompt" = "Tamaño de cada parte en MB:";
+
+/* MARK: status */
+"status.fileMany" = "%d archivos";
+"status.fileOne" = "%d archivo";
+"status.folderMany" = "%d carpetas";
+"status.folderOne" = "%d carpeta";
+
+/* MARK: toolbar */
+"toolbar.back" = "Atrás";
+"toolbar.columns" = "Columnas";
+"toolbar.forward" = "Adelante";
+"toolbar.icons" = "Iconos";
+"toolbar.list" = "Lista";
+
+/* MARK: trash */
+"trash.confirmMany" = "Mover %d elementos a la papelera?";
+"trash.confirmOne" = "Mover \"%@\" a la papelera?";
+
+/* MARK: transfer */
+"action.undoMove" = "Deshacer mover";
+"transfer.confirmLargeMove" = "¿Mover %d elementos a “%@”?";
+"transfer.confirmLargeMoveBody" = "Los originales se eliminarán de su ubicación actual.";
+"transfer.rejectIntoItself" = "“%@” no se puede mover dentro de sí mismo.";
+"transfer.rejectIntoItselfBody" = "Elige un destino fuera de la carpeta que estás moviendo.";
+"transfer.rejectAlreadyThere" = "Esos elementos ya están en esta carpeta.";
+"action.addToSidebar" = "Añadir a la barra lateral";
+"action.removeFromSidebar" = "Eliminar de la barra lateral";
+"action.eject" = "Expulsar";
+"eject.failed" = "No se pudo expulsar “%@”.";
+"tab.new" = "Nueva pestaña";
+"tab.close" = "Cerrar pestaña";
+"tab.next" = "Mostrar pestaña siguiente";
+"tab.previous" = "Mostrar pestaña anterior";
+"menu.view" = "Visualización";
+"view.splitPane" = "Dividir panel";
+"view.mergePanes" = "Unir paneles";
+"view.otherPane" = "Ir al otro panel";
+"action.openInNewTab" = "Abrir en una pestaña nueva";
+"action.openInNewSplit" = "Abrir en un panel nuevo";
+"action.openInOtherPane" = "Abrir en el otro panel";
+"action.copyAsPath" = "Copiar como ruta";
+"sidebar.cloud" = "NUBE";
+"sidebar.trash" = "Papelera";
+"status.unreadable" = "No se puede leer esta carpeta — concede Acceso total al disco en Ajustes";
+"fda.title" = "No se puede abrir “%@”";
+"fda.body" = "macOS protege la Papelera y algunas carpetas más. Leerlas requiere Acceso total al disco, que solo puedes conceder en Ajustes del Sistema — una app no puede pedirlo directamente.\n\nAñade oFinder a la lista y vuelve a abrirla.";
+"fda.openSettings" = "Abrir Ajustes";
+"action.emptyTrash" = "Vaciar la papelera";
+"trash.emptyTitle" = "¿Borrar permanentemente los elementos de la papelera?";
+"trash.emptyBody" = "No puedes deshacer esta acción.";
+"trash.emptyFailed" = "No se pudo vaciar la papelera";
+"action.restore" = "Restaurar";
+"action.deleteImmediately" = "Eliminar inmediatamente";
+"restore.failedTitle" = "Algunos elementos no se restauraron";
+"restore.noRecord" = "No hay registro de su origen: %@";
+"restore.blocked" = "Ya hay algo en el camino de: %@";

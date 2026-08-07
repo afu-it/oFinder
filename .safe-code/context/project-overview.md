@@ -2,7 +2,7 @@
 
 ## What it is
 
-R2 Finder is a macOS file manager — a Finder replacement — written in Swift and
+oFinder is a macOS file manager — a Finder replacement — written in Swift and
 AppKit. [extracted: Package.swift, Sources/]
 
 ## Why it exists
@@ -10,7 +10,7 @@ AppKit. [extracted: Package.swift, Sources/]
 Finder's copy path fails against SMB shares: it tries to write macOS-specific
 metadata (resource forks, extended attributes, `.DS_Store`) that many Samba
 configurations reject, producing error -36 or silent stalls with partial files
-left behind. R2 Finder routes every copy and move through `rsync` instead.
+left behind. oFinder routes every copy and move through `rsync` instead.
 [extracted: README.md]
 
 ## Who it is for

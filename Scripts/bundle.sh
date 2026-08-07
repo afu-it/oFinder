@@ -1,12 +1,12 @@
 #!/bin/bash
-# bundle.sh — assemble "R2 Finder.app" from a SwiftPM build.
+# bundle.sh — assemble "oFinder.app" from a SwiftPM build.
 #
 # Bundle layout:
 #
-#   R2 Finder.app/
+#   oFinder.app/
 #   └── Contents/
 #       ├── Info.plist
-#       ├── MacOS/rs_2finder
+#       ├── MacOS/ofinder
 #       └── Resources/{AppIcon.icns, r2_finder.png, 7zz, rsync}
 #
 # Usage:  Scripts/bundle.sh [version] [config]
@@ -25,8 +25,8 @@ CONFIG="${2:-release}"
 # Strip a leading 'v' from tag-style versions (e.g. "v1.4.0" -> "1.4.0")
 VERSION="${VERSION#v}"
 
-BINARY=".build/${CONFIG}/rs_2finder"
-APP=".build/R2 Finder.app"
+BINARY=".build/${CONFIG}/ofinder"
+APP=".build/oFinder.app"
 
 if [[ ! -x "$BINARY" ]]; then
     echo "error: $BINARY not found – run 'swift build -c ${CONFIG}' first" >&2
@@ -43,12 +43,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key>              <string>R2 Finder</string>
-  <key>CFBundleDisplayName</key>       <string>R2 Finder</string>
-  <key>CFBundleIdentifier</key>        <string>com.example.r2finder</string>
+  <key>CFBundleName</key>              <string>oFinder</string>
+  <key>CFBundleDisplayName</key>       <string>oFinder</string>
+  <key>CFBundleIdentifier</key>        <string>dev.afuit.ofinder</string>
   <key>CFBundleVersion</key>           <string>${VERSION}</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-  <key>CFBundleExecutable</key>        <string>rs_2finder</string>
+  <key>CFBundleExecutable</key>        <string>ofinder</string>
   <key>CFBundleIconFile</key>          <string>AppIcon</string>
   <key>CFBundleDevelopmentRegion</key> <string>en</string>
   <key>CFBundleLocalizations</key>
@@ -61,7 +61,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key>    <string>13.0</string>
   <key>NSHighResolutionCapable</key>   <true/>
   <key>NSAppleEventsUsageDescription</key>
-  <string>R2 Finder asks Finder to empty the Trash, which needs permission to send it commands.</string>
+  <string>oFinder asks Finder to empty the Trash, which needs permission to send it commands.</string>
   <key>NSPrincipalClass</key>          <string>NSApplication</string>
   <key>NSSupportsAutomaticTermination</key><false/>
 </dict>
@@ -69,7 +69,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # 2) Executable
-cp "$BINARY" "$APP/Contents/MacOS/rs_2finder"
+cp "$BINARY" "$APP/Contents/MacOS/ofinder"
 
 # 3) Resources: icon, logo, bundled 7zz + rsync
 cp AppIcon.icns  "$APP/Contents/Resources/AppIcon.icns"
@@ -101,7 +101,7 @@ shopt -u nullglob
 #
 #    Create the identity once with Scripts/make-signing-cert.sh, or point
 #    CODESIGN_IDENTITY at your own.
-IDENTITY="${CODESIGN_IDENTITY:-R2 Finder Self-Signed}"
+IDENTITY="${CODESIGN_IDENTITY:-oFinder Self-Signed}"
 if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
     codesign --force --deep --sign "$IDENTITY" "$APP" 2>&1 | sed 's/^/    /'
     SIGNED_AS="$IDENTITY"

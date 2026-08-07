@@ -1,4 +1,4 @@
-# R2 Finder — Migration to Swift
+# oFinder — Migration to Swift
 
 Plan to remove Zig and Objective-C from the project and land on a single-language
 Swift codebase, without ever leaving `main` in a broken state.
@@ -77,11 +77,11 @@ dependencies in [build.zig.zon](build.zig.zon).
 ## 3. Target state
 
 ```
-R2Finder/
+OFinder/
 ├── Package.swift
 ├── Sources/
-│   ├── R2Finder/main.swift             // entry point
-│   ├── R2FinderServices/               // ← replaced all of src/*.zig (Phase 2 ✅)
+│   ├── OFinder/main.swift             // entry point
+│   ├── OFinderServices/               // ← replaced all of src/*.zig (Phase 2 ✅)
 │   │   ├── DirectoryLister.swift
 │   │   ├── VolumeService.swift
 │   │   ├── FileService.swift
@@ -90,10 +90,10 @@ R2Finder/
 │   │   ├── ProgressParsers.swift
 │   │   ├── Subprocess.swift
 │   │   └── CBridge.swift               // temporary @_cdecl shims for the ObjC UI
-│   └── R2FinderObjC/                   // ← becomes Swift in Phases 4–5
+│   └── OFinderObjC/                   // ← becomes Swift in Phases 4–5
 │       ├── include/                    // headers incl. bridge.h (dies with CBridge)
 │       └── *.m
-├── Tests/R2FinderTests/
+├── Tests/OFinderTests/
 └── Scripts/bundle.sh                   // ← replaced makeBundleStep (Phase 1 ✅)
 ```
 
@@ -133,21 +133,21 @@ Each phase is a mergeable PR. Phases 1–3 remove Zig; phases 4–5 remove Objec
 Take the build off Zig while leaving all Zig **and** ObjC source untouched and working.
 
 - [x] Add `Package.swift` — two targets, since SwiftPM forbids mixed-language targets:
-      `R2FinderObjC` (the six `.m` files, headers in `include/`, `-fobjc-arc`, linked
-      frameworks) and executable `rs_2finder` (named to match `CFBundleExecutable`),
+      `OFinderObjC` (the six `.m` files, headers in `include/`, `-fobjc-arc`, linked
+      frameworks) and executable `ofinder` (named to match `CFBundleExecutable`),
       `platforms: [.macOS(.v13)]`.
-- [x] Move `objc/*.m` → `Sources/R2FinderObjC/`, `objc/*.h` + `include/bridge.h` →
-      `Sources/R2FinderObjC/include/` (the target's public headers dir).
+- [x] Move `objc/*.m` → `Sources/OFinderObjC/`, `objc/*.h` + `include/bridge.h` →
+      `Sources/OFinderObjC/include/` (the target's public headers dir).
 - [x] Compile the Zig code into a static library, checked in temporarily as
       `libs/libfs_ops.a` (regenerate with `Scripts/build-zig-lib.sh`; built with
       `-target aarch64-macos.13.0` to match the deployment target). Note: SwiftPM does
       not track the `.a` as a dependency — after regenerating it, force a relink.
 - [x] Port `makeBundleStep` to `Scripts/bundle.sh`. Verified with `diff -r` against
-      `zig-out/R2 Finder.app`: identical except version string and a trailing newline
+      `zig-out/oFinder.app`: identical except version string and a trailing newline
       in `Info.plist`; `7zz`/`rsync` keep mode 755.
 - [x] Update `release.yml` (drop `setup-zig`; `swift build -c release` +
       `Scripts/bundle.sh`; DMG staging path `zig-out/` → `.build/`).
-- [x] Replace the entry point: `Sources/R2Finder/main.swift` calls `zig_init()` +
+- [x] Replace the entry point: `Sources/OFinder/main.swift` calls `zig_init()` +
       `objc_run_app()`; `src/main.zig` deleted. `build.zig` trimmed to test-only
       (`zig build test` still green) instead of waiting for Phase 2.
 
@@ -208,7 +208,7 @@ implementation:
 - [x] Delete `src/`, `build.zig`, `build.zig.zon`, `.zig-cache/`, `zig-out/`, the
       stray `fs_ops.o`, and the Phase 1 temporaries `libs/libfs_ops.a` +
       `Scripts/build-zig-lib.sh`. (`bridge.h` stays — see above.)
-- [x] Port the Zig unit tests to `Tests/R2FinderTests/` (XCTest): 30 tests — all
+- [x] Port the Zig unit tests to `Tests/OFinderTests/` (XCTest): 30 tests — all
       the old dir/file/volume/transfer/archive tests plus fixture-based parser
       tests for the rsync `--info=progress2` and 7zz `-bsp1` formats (the plan's
       "capture raw output, test the parser" mitigation).
@@ -264,7 +264,7 @@ graph, not smallest-first. The graph made `AppDelegate` (referenced by nothing),
 ### Phase 5 — ObjC → Swift, hard files ✅
 
 **The migration is complete: zero Objective-C, zero Zig.** With the last ObjC
-file gone, the `R2FinderObjC` target, `bridge.h`, and the `CBridge.swift`
+file gone, the `OFinderObjC` target, `bridge.h`, and the `CBridge.swift`
 `@_cdecl` shims were all deleted — the Swift UI calls the services directly.
 `Package.swift` is down to two targets + tests, with no C-family settings.
 

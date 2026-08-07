@@ -27,7 +27,7 @@ and run it. Then write the XCTest file anyway, so it runs wherever Xcode exists.
 - Quit the app before installing; a running app holds its executable and the old
   code keeps running. `Scripts/install.sh` does this for you.
 - After installing, confirm it actually runs before claiming anything works:
-  `open -a "R2 Finder"`, then check the process exists
+  `open -a "oFinder"`, then check the process exists
   (`ps ax | grep [r]s_2finder`). To catch Auto Layout complaints and runtime
   errors, run the bundled binary once with stderr captured — accepting that TCC
   answers for the terminal in that mode, so it is a crash check, not a

@@ -1,5 +1,48 @@
 # Log
 
+## 2026-08-07 · decision
+
+Renamed the app to oFinder: modules `OFinder` / `OFinderServices`, executable
+`ofinder`, bundle identifier `dev.afuit.ofinder`, signing certificate
+`oFinder Self-Signed`, version restarted at 0.0.1. Favorites migrate from the
+old preferences domain on first launch and the old domain is left intact.
+
+Rewrote the 49 commits after `v2.0.2` to the `afu-it` identity. Every one of
+them sits after that tag and none before it, so upstream's history and all
+mirrored tags stayed byte-identical. Git had been guessing the author from the
+macOS account because `user.name` was never set anywhere.
+
+Found while checking: the `v1.x`–`v2.0.2` releases belong to
+`carmonac/r2_finder`. This fork has no releases of its own, so the earlier
+plan to delete them was aimed at the wrong repository and was not carried out.
+
+atomic split skipped: the rename touched nearly every file in the tree, so the
+session's fixes and the rename share hunks and cannot be separated.
+
+plain: gave the app a new name and a fresh version number, kept the sidebar
+shortcuts, and took the full name out of the commit history.
+
+
+## 2026-08-07 · bugfix
+
+Cancel in the transfer window closed the window without signalling rsync, so a
+cancelled move kept deleting source files. Jobs now return a `TransferHandle`;
+the window holds it and both Cancel and the close button go through it. Two
+review passes found four further defects, all fixed: the close button could
+still escape after a cancel, a queued archive job could wedge the window
+open, SIGKILL reached only the parent while rsync's forks kept the pipe open,
+and the process-table walk gave up whenever the table grew mid-read.
+
+Also: the mouse thumb buttons now drive back and forward, with `Cmd+[` and
+`Cmd+]` for mice whose drivers send keystrokes instead. And the Edit menu had
+wired Cmd+C/X/V to private selectors, so a focused text field never saw them;
+the path bar could not be copied from. They now use the standard `copy:`,
+`cut:` and `paste:`.
+
+plain: pressing Cancel really stops a copy now, the side buttons on the mouse
+work, and you can copy the folder path out of the bar at the top.
+
+
 ## 2026-08-07 · audit
 
 Audited the repo after creating the brain. No dead code: the scanner's 11

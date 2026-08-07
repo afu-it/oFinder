@@ -2,16 +2,22 @@
 
 ## Last Session
 
-status: completed
+status: saved
 saved_at: 2026-08-07
-completed: created the project brain (AGENTS.md, CLAUDE.md bridge, .safe-code/
-  with 8 context files and 6 session files); dead-code audit (0 findings);
-  agent config trust audit (clean); context self-test 11/12 then 12/12 after
-  filling seven gaps
-pending: none
-next_action: none — start a fresh pass, or pick up BACKLOG High (rsync cancel)
+completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
+  and Cmd+[ / Cmd+] drive back and forward; the path bar can be copied from;
+  renamed the app to oFinder on `dev.afuit.ofinder` at v0.0.1, carrying
+  Favorites across; rewrote the 49 local commits to the `afu-it` identity
+pending: AFU to confirm the mouse thumb buttons work on his own mouse; decide
+  what to do with the upstream tags mirrored into this fork; decide whether to
+  rename the GitHub repo and the checkout folder, both still `r2_finder`
+next_action: none blocking. Re-grant Full Disk Access to oFinder, then confirm
+  the thumb buttons.
 
 ## Notes
 
-The brain is new. A fresh agent should read `AGENTS.md` first; everything it
-needs is reachable from there.
+The app's identity changed in this session: bundle identifier
+`com.example.r2finder` to `dev.afuit.ofinder`, and the signing certificate to
+`oFinder Self-Signed`. macOS therefore treats it as a new app and Full Disk
+Access has to be granted again. The old `/Applications/R2 Finder.app` is
+obsolete.
