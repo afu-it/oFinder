@@ -12,8 +12,10 @@ completed: made Cancel actually stop rsync (and its forks); mouse thumb buttons
 pending: AFU to confirm the mouse thumb buttons on his own mouse (copying the
   path out of the breadcrumb bar is confirmed working); decide what to do with
   the upstream tags mirrored into this fork; rename the local checkout folder
-next_action: rename the checkout folder to `oFinder`, wipe `.build`, and
-  reopen it. Then re-grant Full Disk Access and try the thumb buttons.
+next_action: (2026-08-07) folder renamed, `.build` rebuilt clean — build,
+  bundle 0.0.1, and install to /Applications all verified green with the
+  `oFinder Self-Signed` identity. Remaining: AFU grants Full Disk Access,
+  tests the mouse thumb buttons, decides on the upstream tags.
 
 ## Notes
 

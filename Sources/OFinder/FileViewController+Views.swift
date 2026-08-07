@@ -39,18 +39,10 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
     }
 
     func outlineView(_ ov: NSOutlineView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
-        guard let sd = ov.sortDescriptors.first, let key = sd.key else { return }
-        entries.sort { a, b in
-            let ascending: Bool
-            switch key {
-            case "size": ascending = a.size < b.size
-            case "date": ascending = a.mtime < b.mtime
-            case "kind": ascending = !a.isDir && b.isDir
-            default:
-                ascending = a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            }
-            return sd.ascending ? ascending : !ascending
-        }
+        guard !isSyncingSortIndicator,
+              let sd = ov.sortDescriptors.first, let key = sd.key else { return }
+        Self.saveSort(key: key, ascending: sd.ascending, forPath: currentPath)
+        entries = Self.sorted(entries, key: key, ascending: sd.ascending)
         ov.reloadData()
     }
 
@@ -109,7 +101,9 @@ extension FileViewController: NSOutlineViewDataSource, NSOutlineViewDelegate,
             }()
         switch ident {
         case "size":
-            cell.textField?.stringValue = entry.isDir ? "-" : formattedSize(entry.size)
+            // A folder's size isn't computed; leave the cell empty rather
+            // than showing a dash.
+            cell.textField?.stringValue = entry.isDir ? "" : formattedSize(entry.size)
         case "date":
             cell.textField?.stringValue = formattedDate(entry.mtime)
         case "kind":
@@ -679,7 +673,7 @@ extension FileViewController {
         alert.messageText = fileName
         alert.icon = icon
         alert.informativeText = """
-            \(L10n.t("info.kind", "Kind")): \(kindStr)
+            \(L10n.t("info.kind", "Type")): \(kindStr)
 
             \(L10n.t("info.size", "Size")): \(sizeStr)
 

@@ -33,7 +33,7 @@
 
 /* MARK: column */
 "column.dateModified" = "Date Modified";
-"column.kind" = "Kind";
+"column.kind" = "Type";
 "column.name" = "Name";
 "column.size" = "Size";
 
@@ -60,7 +60,7 @@
 
 /* MARK: info */
 "info.created" = "Created";
-"info.kind" = "Kind";
+"info.kind" = "Type";
 "info.location" = "Location";
 "info.modified" = "Modified";
 "info.permissions" = "Permissions";

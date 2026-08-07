@@ -15,6 +15,13 @@ enum FileViewMode: Int {
     case list = 1
     case columns = 2
     case gallery = 3
+
+    /// The mode the user last switched to, grid (icon) out of the box.
+    static var savedDefault: FileViewMode {
+        guard let raw = UserDefaults.standard.object(forKey: "viewMode") as? Int,
+              let mode = FileViewMode(rawValue: raw) else { return .icon }
+        return mode
+    }
 }
 
 @MainActor
@@ -32,8 +39,9 @@ final class FileViewController: NSViewController {
 
     static var showHidden = false
 
-    var viewMode: FileViewMode = .list {
+    var viewMode: FileViewMode = .savedDefault {
         didSet {
+            UserDefaults.standard.set(viewMode.rawValue, forKey: "viewMode")
             scrollView.isHidden = true
             iconScrollView.isHidden = true
             columnView.isHidden = true
@@ -72,6 +80,54 @@ final class FileViewController: NSViewController {
     // Model
     var entries: [FileEntry] = []
     var renameRow = -1
+
+    // Sort — the column the user last picked persists as the default. Recents
+    // keeps its own preference (Date Modified, newest first, out of the box);
+    // real directories share one, and until a header is ever clicked their
+    // DirectoryLister order (folders first, by name) is left alone.
+    var isSyncingSortIndicator = false
+
+    static func savedSort(forPath path: String) -> (key: String, ascending: Bool)? {
+        let ctx = RecentsService.isRecents(path) ? "recents" : "browse"
+        let d = UserDefaults.standard
+        if let key = d.string(forKey: "sortKey.\(ctx)") {
+            return (key, d.bool(forKey: "sortAscending.\(ctx)"))
+        }
+        return ctx == "recents" ? ("date", false) : nil
+    }
+
+    static func saveSort(key: String, ascending: Bool, forPath path: String) {
+        let ctx = RecentsService.isRecents(path) ? "recents" : "browse"
+        let d = UserDefaults.standard
+        d.set(key, forKey: "sortKey.\(ctx)")
+        d.set(ascending, forKey: "sortAscending.\(ctx)")
+    }
+
+    static func sorted(_ list: [FileEntry], key: String, ascending: Bool) -> [FileEntry] {
+        list.sorted { a, b in
+            let asc: Bool
+            switch key {
+            case "size": asc = a.size < b.size
+            case "date": asc = a.mtime < b.mtime
+            case "kind": asc = !a.isDir && b.isDir
+            default:
+                asc = a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+            return ascending ? asc : !asc
+        }
+    }
+
+    /// Point the header's sort arrow at the saved preference without
+    /// re-entering sortDescriptorsDidChange's save-and-sort.
+    func syncSortIndicator(forPath path: String) {
+        isSyncingSortIndicator = true
+        defer { isSyncingSortIndicator = false }
+        if let s = Self.savedSort(forPath: path) {
+            outlineView.sortDescriptors = [NSSortDescriptor(key: s.key, ascending: s.ascending)]
+        } else {
+            outlineView.sortDescriptors = []
+        }
+    }
 
     // Outline expansion/selection, tracked live as the user drives them rather
     // than read back from the outline at reload time. A reload always follows a
@@ -161,7 +217,7 @@ final class FileViewController: NSViewController {
         // Outline view (supports expandable folders)
         outlineView.allowsMultipleSelection = true
         outlineView.allowsColumnResizing = true
-        outlineView.allowsColumnReordering = false
+        outlineView.allowsColumnReordering = true
         outlineView.rowSizeStyle = .medium
         outlineView.gridStyleMask = .solidHorizontalGridLineMask
         outlineView.dataSource = self
@@ -181,21 +237,30 @@ final class FileViewController: NSViewController {
         // Columns
         let columnDefs: [(id: String, title: String, width: CGFloat)] = [
             ("name", L10n.t("column.name", "Name"), 340),
-            ("size", L10n.t("column.size", "Size"), 100),
             ("date", L10n.t("column.dateModified", "Date Modified"), 180),
-            ("kind", L10n.t("column.kind", "Kind"), 120),
+            ("kind", L10n.t("column.kind", "Type"), 120),
+            ("size", L10n.t("column.size", "Size"), 100),
         ]
         for (i, def) in columnDefs.enumerated() {
             let col = NSTableColumn(identifier: .init(def.id))
             col.title = def.title
             col.width = def.width
             col.minWidth = 60
-            col.sortDescriptorPrototype = NSSortDescriptor(key: def.id, ascending: true)
+            // Date and size sort newest/largest first on the first click,
+            // matching what someone reaching for those columns is after.
+            let firstClickAscending = (def.id == "name" || def.id == "kind")
+            col.sortDescriptorPrototype = NSSortDescriptor(key: def.id,
+                                                           ascending: firstClickAscending)
             outlineView.addTableColumn(col)
             if i == 0 {
                 outlineView.outlineTableColumn = col // disclosure triangles in Name column
             }
         }
+        // Remember dragged column order and resized widths across launches.
+        // The autosave name must be set *after* the columns exist, or the
+        // restore pass has nothing to match the saved identifiers against.
+        outlineView.autosaveName = "oFinderColumns"
+        outlineView.autosaveTableColumns = true
 
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -262,6 +327,10 @@ final class FileViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // The initial value skips didSet, and loadView builds with the list
+        // visible — re-assigning runs the switcher so the saved mode shows.
+        let mode = viewMode
+        viewMode = mode
         loadPath(currentPath)
     }
 
@@ -472,8 +541,11 @@ final class FileViewController: NSViewController {
                     }
                 }
 
-                self.entries = newEntries
+                self.entries = Self.savedSort(forPath: path).map {
+                    Self.sorted(newEntries, key: $0.key, ascending: $0.ascending)
+                } ?? newEntries
                 self.loadedShowHidden = showHidden
+                self.syncSortIndicator(forPath: path)
                 self.reloadAllViews()
                 self.updateStatusBar()
 

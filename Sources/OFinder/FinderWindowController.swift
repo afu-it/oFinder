@@ -34,7 +34,9 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
 
     init(path: String) {
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 650),
+        // Wide enough that the list view shows every column through Size
+        // (sidebar + Name 340 + Date 180 + Type 120 + Size 100 + chrome).
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 700),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
                            backing: .buffered,
                            defer: false)
@@ -44,9 +46,28 @@ final class FinderWindowController: NSWindowController, NSToolbarDelegate,
 
         super.init(window: win)
 
+        // NSWindowController ignores the window's frame autosave while
+        // shouldCascadeWindows (its default) is on — nothing ever gets saved.
+        shouldCascadeWindows = false
+
         panes = [makePane(path: path)]
         setupToolbar()
         setupContent()
+
+        // Assigning contentViewController (in setupContent) resizes the window
+        // to the split view's fitting size — Auto Layout collapses that to the
+        // 640-wide minimum, silently discarding the frame above. Restore the
+        // intended frame afterwards. Autosave must live on the *controller*
+        // (windowFrameAutosaveName) — a name set on the window itself is
+        // ignored under NSWindowController and never saves anything. Setting
+        // it also restores the saved frame; when nothing was saved yet, fall
+        // back to the wide first-run default.
+        windowFrameAutosaveName = "oFinderMainWindow"
+        if !win.setFrameUsingName("oFinderMainWindow") {
+            win.setContentSize(NSSize(width: 1200, height: 700))
+            win.center()
+        }
+
         locationChanged()
         watchForSideButtons()
     }
