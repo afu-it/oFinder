@@ -14,10 +14,10 @@ completed: verified the renamed checkout builds clean; sticky sort (Recents
   bilingual README (EN + ms) with logo (docs/assets/logo.png) and badges;
   tagged and pushed v0.0.1
 pending: AFU to grant Full Disk Access and test the mouse thumb buttons;
-  decide on carmonac's upstream tags v1.0.0-v2.0.2 (recommended: delete from
-  fork, they sit above our v0.0.1); old "R2 Finder Self-Signed" cert and
-  backup/pre-identity-rewrite branch can go once the new history has proven
-  itself
+  old "R2 Finder Self-Signed" cert and backup/pre-identity-rewrite branch can
+  go once the new history has proven itself (carmonac's upstream tags
+  v1.0.0-v2.0.2 were deleted from the fork on 2026-08-07; v0.0.1 is the only
+  tag now)
 next_action: AFU tests FDA + thumb buttons; next features toward v0.0.2
   (AFU will say when to bump the version)
 
