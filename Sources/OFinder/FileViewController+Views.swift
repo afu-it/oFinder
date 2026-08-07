@@ -581,7 +581,9 @@ extension FileViewController: NSTextFieldDelegate {
         tf.isSelectable = true
         tf.delegate = self
         view.window?.makeFirstResponder(tf)
-        tf.currentEditor()?.selectAll(nil)
+        if let entry = renameIconEntry {
+            selectBaseName(of: entry.name, isDir: entry.isDir, in: tf)
+        }
     }
 
     /// Rename through a sheet, for view modes without an editable label.
@@ -597,6 +599,12 @@ extension FileViewController: NSTextFieldDelegate {
         field.stringValue = oldName
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+        let selectDir = isDir.boolValue
+        DispatchQueue.main.async { [weak self] in
+            self?.selectBaseName(of: oldName, isDir: selectDir, in: field)
+        }
         alert.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .alertFirstButtonReturn else { return }
             let newName = field.stringValue
@@ -627,6 +635,24 @@ extension FileViewController: NSTextFieldDelegate {
         // Use the outline view's own editing path to properly install the
         // field editor within the cell.
         outlineView.editColumn(nameCol, row: renameRow, with: nil, select: true)
+        if let entry = outlineView.item(atRow: renameRow) as? FileEntry {
+            selectBaseName(of: entry.name, isDir: entry.isDir, in: tf)
+        }
+    }
+
+    /// Pre-select the name without its extension, Finder-style: renaming
+    /// "photo (2).png" starts with "photo (2)" selected and ".png" intact.
+    /// Folders, dotfiles, and extensionless names select fully.
+    private func selectBaseName(of name: String, isDir: Bool, in tf: NSTextField) {
+        guard let editor = tf.currentEditor() else { return }
+        let name = name as NSString
+        let ext = name.pathExtension
+        if !isDir, !ext.isEmpty, name.length > ext.utf16.count + 1 {
+            editor.selectedRange = NSRange(location: 0,
+                                           length: name.length - ext.utf16.count - 1)
+        } else {
+            editor.selectAll(nil)
+        }
     }
 
     /// The entry an in-progress inline rename belongs to, in either view.
