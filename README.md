@@ -46,7 +46,7 @@ rsync -a -P [--ignore-existing] [--remove-source-files] <sources> <destination>/
 **Transfers**
 - Copy and move through rsync, with a progress window showing speed and ETA
 - Cancel actually cancels: the rsync process and its forks are stopped, not orphaned
-- Cut, copy, and paste, including files copied from Finder
+- Cut with Cmd+X, copy, and paste, including files copied from Finder; a cut item dims until it is pasted or released
 - Drag and drop between windows and to or from other apps
 
 **Browsing**
@@ -63,7 +63,7 @@ rsync -a -P [--ignore-existing] [--remove-source-files] <sources> <destination>/
 - Inline rename, new folder (Cmd+Shift+N), Get Info
 - 7z archive creation and extraction
 - Show or hide dotfiles
-- English and Spanish localization
+- The interface follows your Mac's system language
 
 ## Install
 
@@ -112,6 +112,21 @@ The app is 100% Swift, migrated from Zig and Objective-C (the story is in `SWIFT
 
 Transfers run on background threads inside the service layer; the UI receives progress callbacks on the main queue and stays responsive during large copies.
 
+## What's different from the original
+
+oFinder began as a fork of [r2_finder](https://github.com/carmonac/r2_finder) by Carlos Carmona, and the rsync-first idea comes from that project. Since the fork it has diverged in these ways:
+
+| | r2_finder | oFinder |
+|---|---|---|
+| Cancel during a transfer | rsync kept running in the background | Stops the rsync process and its forks |
+| Back / forward | Toolbar buttons | Also Cmd+[ / Cmd+] and the side buttons on a mouse |
+| Path bar | Display only | The path can be selected and copied |
+| Sorting | Reset on every visit | Your choice persists; Recents opens newest first |
+| Columns | Fixed order: Name, Size, Date, Kind | Name, Date Modified, Type, Size; drag to reorder, order and widths saved |
+| Window | Opened at the minimum width each launch | Opens wide enough for every column, then remembers your size |
+| View mode | List on every launch | Grid by default, last-used view remembered |
+| App identity | `com.example.r2finder`, ad-hoc signature | `dev.afuit.ofinder` with a stable signing certificate, so Full Disk Access survives rebuilds |
+
 ## Credits
 
-oFinder began as a fork of [r2_finder](https://github.com/carmonac/r2_finder) by Carlos Carmona, then took its own name and version line. The rsync-first idea comes from that project.
+Thanks to Carlos Carmona for r2_finder, the project this one grew out of.

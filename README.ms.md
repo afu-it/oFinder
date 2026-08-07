@@ -46,7 +46,7 @@ rsync -a -P [--ignore-existing] [--remove-source-files] <sumber> <destinasi>/
 **Pemindahan**
 - Salin dan pindah melalui rsync, dengan tetingkap kemajuan yang tunjuk kelajuan dan ETA
 - Cancel betul-betul batal: proses rsync dan anak prosesnya dihentikan, bukan ditinggal
-- Cut, copy, paste, termasuk fail yang disalin dari Finder
+- Cut dengan Cmd+X, copy dan paste, termasuk fail yang disalin dari Finder; item yang di-cut jadi pudar sampai ia di-paste atau dilepaskan
 - Drag and drop antara tetingkap dan ke atau dari app lain
 
 **Melayar**
@@ -63,7 +63,7 @@ rsync -a -P [--ignore-existing] [--remove-source-files] <sumber> <destinasi>/
 - Namakan semula terus di tempat, folder baharu (Cmd+Shift+N), Get Info
 - Cipta dan ekstrak arkib 7z
 - Tunjuk atau sembunyi dotfile
-- Terjemahan Inggeris dan Sepanyol
+- Antara muka ikut bahasa sistem Mac anda
 
 ## Pasang
 
@@ -112,6 +112,21 @@ App ini 100% Swift, dipindahkan dari Zig dan Objective-C (ceritanya dalam `SWIFT
 
 Pemindahan berjalan atas thread latar dalam lapisan servis; UI terima callback kemajuan di main queue dan kekal responsif semasa salinan besar.
 
+## Apa beza dengan yang asal
+
+oFinder bermula sebagai fork [r2_finder](https://github.com/carmonac/r2_finder) oleh Carlos Carmona, dan idea rsync-dahulu datang dari projek itu. Sejak fork, ia dah berubah begini:
+
+| | r2_finder | oFinder |
+|---|---|---|
+| Cancel semasa pemindahan | rsync terus jalan di belakang | Hentikan proses rsync dan anak prosesnya |
+| Undur / maju | Butang toolbar sahaja | Tambah Cmd+[ / Cmd+] dan butang tepi tetikus |
+| Bar laluan | Paparan sahaja | Laluan boleh dipilih dan disalin |
+| Sort | Reset setiap kali masuk | Pilihan kekal; Recents buka yang terbaru dulu |
+| Lajur | Susunan tetap: Name, Size, Date, Kind | Name, Date Modified, Type, Size; tarik untuk susun, susunan dan lebar disimpan |
+| Tetingkap | Buka pada lebar minimum setiap kali | Buka cukup lebar untuk semua lajur, kemudian ingat saiz anda |
+| Mod paparan | Senarai setiap kali buka | Grid secara lalai, paparan terakhir diingati |
+| Identiti app | `com.example.r2finder`, tandatangan ad-hoc | `dev.afuit.ofinder` dengan sijil tandatangan kekal, jadi Full Disk Access tahan rebuild |
+
 ## Kredit
 
-oFinder bermula sebagai fork [r2_finder](https://github.com/carmonac/r2_finder) oleh Carlos Carmona, kemudian ambil nama dan garis versi sendiri. Idea rsync-dahulu datang dari projek itu.
+Terima kasih kepada Carlos Carmona untuk r2_finder, projek asal yang melahirkan yang ini.
