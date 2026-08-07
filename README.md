@@ -1,91 +1,117 @@
+<div align="center">
+
+<img src="docs/assets/logo.png" width="160" alt="oFinder logo">
+
 # oFinder
 
-<!-- DOWNLOAD_SECTION_START -->
-## Download
+A macOS file manager that copies over SMB without breaking.
 
-No release yet. oFinder restarted at v0.0.1 under its own name, so build it
-from source with the commands under **Build** below. A DMG will appear here
-once v0.0.1 is tagged.
+[![Version](https://img.shields.io/badge/version-0.0.1-blue)](https://github.com/afu-it/oFinder/releases)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)](#requirements)
+[![Swift](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](#building-from-source)
+[![UI](https://img.shields.io/badge/UI-AppKit-8A2BE2)](#architecture)
+[![Transfers](https://img.shields.io/badge/transfers-rsync-2E8B57)](#why-rsync-works-where-finder-doesnt)
 
-Drag **oFinder.app** from the DMG to your `/Applications` folder.
+**English** · [Bahasa Melayu](README.ms.md)
 
-**Important:** Since the application is not notarized, macOS will quarantine it the
-first time. Run this command in Terminal **before** opening it:
+</div>
 
-```bash
-xattr -d com.apple.quarantine /Applications/oFinder.app
-```
-<!-- DOWNLOAD_SECTION_END -->
+---
 
-## Why does this exist?
+## Why this exists
 
-macOS Finder has a long-standing problem when copying files to volumes exposed over **Samba (SMB)** — particularly in certain NAS or server configurations. Depending on the SMB dialect, server quirks, or extended-attribute support, Finder will frequently throw cryptic errors like:
+Copy a large folder to a NAS or Samba share with Finder and sooner or later you hit this:
 
-> *"The operation can't be completed because an unexpected error occurred (error code -36), (error: 100093). etc..."*
+> *"The operation can't be completed because an unexpected error occurred (error code -36)."*
 
-or silently stall mid-transfer, leaving partial files behind. The root cause is that Finder tries to copy macOS-specific metadata (resource forks, extended attributes, `.DS_Store` entries) alongside the actual file data, and many Samba configurations reject or mishandle those writes.
+Sometimes there is no error at all. The transfer stalls partway and leaves half-written files on the share. The cause is that Finder insists on copying macOS-specific metadata (resource forks, extended attributes, `.DS_Store` entries) along with the file data, and plenty of SMB configurations reject those writes.
 
-**oFinder solves this by using `rsync` for all copy and move operations** instead of the Finder/kernel copy APIs.
+oFinder is a file manager that routes every copy and move through `rsync` instead of the Finder copy APIs. Transfers to Samba shares finish, and when one gets interrupted, it resumes instead of starting over.
 
-### Why rsync works where Finder doesn't
+## Why rsync works where Finder doesn't
 
-macOS ships `/usr/bin/rsync` (Apple's `openrsync`) as a first-class tool. oFinder invokes it with:
+macOS ships `/usr/bin/rsync` as a first-class tool. oFinder invokes it as:
 
 ```
 rsync -a -P [--ignore-existing] [--remove-source-files] <sources> <destination>/
 ```
 
-- **`-a` (archive mode)** — preserves permissions, timestamps, and symlinks without attempting to push macOS-specific resource forks that Samba rejects.
-- **`-P`** — combines `--partial` (resume interrupted transfers) and per-file progress reporting.
-- **`--ignore-existing`** — safe copy without overwriting, used when no collision override is chosen.
-- **`--remove-source-files`** — clean atomic move, only deletes the source after the destination is fully written.
-
-Because rsync speaks the remote filesystem's language and skips the extended-attribute overhead, transfers to Samba shares complete reliably where Finder fails.
+- `-a` (archive mode) preserves permissions, timestamps, and symlinks without pushing the macOS resource forks that Samba rejects
+- `-P` resumes interrupted transfers and reports per-file progress
+- `--ignore-existing` copies without overwriting when no collision override is chosen
+- `--remove-source-files` deletes the source only after the destination is fully written, so a move can't lose data halfway
 
 ## Features
 
-- Browse the local filesystem and any mounted volumes (including Samba shares)
-- Copy and move files using rsync — progress window with speed and ETA
-- Cut / Copy / Paste with support for files copied from macOS Finder
-- Paste with **Option key** held → force move (`Trasladar aquí`)
-- Drag-and-drop between windows and from/to other apps
-- Quick Look preview with **Space bar**
-- Rename files inline
-- Create new folders (toolbar button or Cmd+Shift+N)
-- Show / hide hidden files (dotfiles)
-- Sidebar with favourites (home, desktop, documents, downloads, etc.) and mounted volumes — auto-refreshes on mount/unmount
-- Back / Forward navigation history per window
-- Multiple independent windows
+**Transfers**
+- Copy and move through rsync, with a progress window showing speed and ETA
+- Cancel actually cancels: the rsync process and its forks are stopped, not orphaned
+- Cut, copy, and paste, including files copied from Finder
+- Drag and drop between windows and to or from other apps
 
-## Building
+**Browsing**
+- Grid, list, and column views; the app remembers which one you last used
+- List columns (Name, Date Modified, Type, Size) can be dragged into any order, and the order, widths, and your sort choice all stick
+- Recents opens sorted by newest first
+- Tabs, split panes, and multiple independent windows
+- Sidebar with favorites and mounted volumes, refreshed on mount and unmount
+- Back and forward with toolbar buttons, Cmd+[ and Cmd+], or the side buttons on your mouse
+- A path bar you can actually copy a path out of
 
-Requires **Swift 6.0+** (Xcode command-line tools) and macOS 13+. The package
-builds in Swift 6 language mode (strict concurrency).
+**Files**
+- Quick Look preview on Space
+- Inline rename, new folder (Cmd+Shift+N), Get Info
+- 7z archive creation and extraction
+- Show or hide dotfiles
+- English and Spanish localization
+
+## Install
+
+No packaged release yet. oFinder restarted at v0.0.1 under its own name, and a DMG will appear on the [releases page](https://github.com/afu-it/oFinder/releases) once one is built. Until then, build from source below.
+
+The app is not notarized, so macOS quarantines it on first launch. Clear the flag before opening:
 
 ```bash
-# Build and run directly (debug; uses the repo's bin/rsync and bin/7zz)
+xattr -d com.apple.quarantine /Applications/oFinder.app
+```
+
+Some folders (Desktop, Documents, Trash, and others) stay unreadable until you grant the app Full Disk Access in System Settings → Privacy & Security.
+
+## Requirements
+
+- macOS 13 or newer
+- Swift 6.0 toolchain (Xcode command line tools) to build from source
+
+## Building from source
+
+```bash
+# Run directly (debug; uses the repo's bin/rsync and bin/7zz)
 swift run
 
-# Build
+# Release build
 swift build -c release
 
 # Create oFinder.app in .build/ and open it
 Scripts/bundle.sh
 open ".build/oFinder.app"
 
-# Run unit tests (services: listing, transfers, archives, parsers)
+# Unit tests (services: listing, transfers, archives, parsers)
 swift test
 ```
 
-The `.app` bundle is self-contained — copy `.build/oFinder.app` anywhere to install.
+The `.app` bundle is self-contained; copy `.build/oFinder.app` anywhere to install. If you plan to grant it Full Disk Access, run `Scripts/make-signing-cert.sh` once first so rebuilds keep a stable signing identity, and install with `Scripts/install.sh` rather than deleting the old bundle.
 
 ## Architecture
 
-The app is 100 % Swift (migrated from Zig + Objective-C — see `SWIFT_MIGRATION.md`).
+The app is 100% Swift, migrated from Zig and Objective-C (the story is in `SWIFT_MIGRATION.md`), and builds in Swift 6 language mode with strict concurrency.
 
 | Layer | Responsibility |
 |-------|----------------|
-| `Sources/OFinderServices/` | Filesystem services: list, copy/move (rsync), delete, create directory, rename, volumes, 7z archives |
-| `Sources/OFinder/` | The app: entry point + AppKit UI (windows, toolbar, sidebar, file views, progress, Quick Look) |
+| `Sources/OFinderServices/` | Filesystem services: listing, rsync transfers, delete, mkdir, rename, volumes, 7z archives |
+| `Sources/OFinder/` | The app: entry point and AppKit UI (windows, toolbar, sidebar, file views, progress, Quick Look) |
 
-Copy and move operations run on background threads inside the service layer; the UI dispatches progress callbacks onto the main queue so it stays responsive during large transfers.
+Transfers run on background threads inside the service layer; the UI receives progress callbacks on the main queue and stays responsive during large copies.
+
+## Credits
+
+oFinder began as a fork of [r2_finder](https://github.com/carmonac/r2_finder) by Carlos Carmona, then took its own name and version line. The rsync-first idea comes from that project.
