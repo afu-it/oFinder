@@ -19,8 +19,13 @@ plan to delete them was aimed at the wrong repository and was not carried out.
 atomic split skipped: the rename touched nearly every file in the tree, so the
 session's fixes and the rename share hunks and cannot be separated.
 
+The rewritten history is pushed. The push failed first over HTTPS: the `gh`
+OAuth token has no `workflow` scope, and the rename touched
+`.github/workflows/release.yml`, so GitHub refused the whole push. Switching
+`origin` to SSH cleared it, since an SSH key carries no such scope.
+
 plain: gave the app a new name and a fresh version number, kept the sidebar
-shortcuts, and took the full name out of the commit history.
+shortcuts, and took the full name out of the commit history on GitHub.
 
 
 ## 2026-08-07 · bugfix

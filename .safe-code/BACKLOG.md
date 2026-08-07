@@ -27,8 +27,8 @@ _2026-08-07_
 - The README download section still describes a release that does not exist
   yet. It needs rewriting once v0.0.1 is actually published, or removing until
   then.
-- The GitHub repo is still `afu-it/r2_finder` and so is the local checkout
-  folder. Renaming either is optional; nothing depends on it.
+- The GitHub repo is still `afu-it/r2_finder`. The local checkout is now
+  `oFinder`. Renaming the repo is optional; GitHub redirects the old URL.
 - The upstream tags `v1.0.0`-`v2.0.2` are mirrored into this fork. They point
   at commits from `carmonac/r2_finder` and can be dropped from the fork
   without affecting upstream, or simply left as fork history.
