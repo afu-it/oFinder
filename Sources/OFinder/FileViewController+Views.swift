@@ -546,12 +546,68 @@ extension FileViewController: NSMenuDelegate, NSMenuItemValidation {
 extension FileViewController: NSTextFieldDelegate {
 
     @IBAction func renameSelected(_ sender: Any?) {
-        let row = outlineView.selectedRow
-        guard row >= 0 else { return }
-        renameRow = row
-        // Delay activation so the window fully settles after context-menu dismiss.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            self?.beginInlineRename()
+        switch viewMode {
+        case .icon:
+            guard let ip = collectionView.selectionIndexPaths.first,
+                  ip.item < entries.count else { return }
+            renameIconEntry = entries[ip.item]
+            // Delay activation so the window fully settles after context-menu dismiss.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.beginIconRename(at: ip)
+            }
+        case .columns:
+            // Miller column cells draw their own rows; no field editor to
+            // borrow there, so rename goes through a small prompt instead.
+            guard let path = columnView.selectedPaths.first else { return }
+            promptRename(path: path)
+        default:
+            let row = outlineView.selectedRow
+            guard row >= 0 else { return }
+            renameRow = row
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.beginInlineRename()
+            }
+        }
+    }
+
+    private func beginIconRename(at indexPath: IndexPath) {
+        guard renameIconEntry != nil,
+              let item = collectionView.item(at: indexPath) as? IconCollectionViewItem,
+              let tf = item.textField else {
+            renameIconEntry = nil
+            return
+        }
+        tf.isEditable = true
+        tf.isSelectable = true
+        tf.delegate = self
+        view.window?.makeFirstResponder(tf)
+        tf.currentEditor()?.selectAll(nil)
+    }
+
+    /// Rename through a sheet, for view modes without an editable label.
+    private func promptRename(path: String) {
+        guard let window = view.window else { return }
+        let oldName = (path as NSString).lastPathComponent
+        let alert = NSAlert()
+        alert.messageText = L10n.t("action.rename", "Rename")
+        alert.informativeText = oldName
+        alert.addButton(withTitle: L10n.t("action.rename", "Rename"))
+        alert.addButton(withTitle: L10n.t("button.cancel", "Cancel"))
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
+        field.stringValue = oldName
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .alertFirstButtonReturn else { return }
+            let newName = field.stringValue
+            guard !newName.isEmpty, newName != oldName else { return }
+            let newPath = ((path as NSString).deletingLastPathComponent as NSString)
+                .appendingPathComponent(newName)
+            if let error = FileService.rename(src: path, dst: newPath) {
+                self.showErrorMessage(error)
+            } else {
+                self.loadPath(self.currentPath)
+            }
         }
     }
 
@@ -573,29 +629,39 @@ extension FileViewController: NSTextFieldDelegate {
         outlineView.editColumn(nameCol, row: renameRow, with: nil, select: true)
     }
 
+    /// The entry an in-progress inline rename belongs to, in either view.
+    private var inlineRenameEntry: FileEntry? {
+        if renameRow >= 0 { return outlineView.item(atRow: renameRow) as? FileEntry }
+        return renameIconEntry
+    }
+
     func control(_ control: NSControl, textView: NSTextView, doCommandBy sel: Selector) -> Bool {
-        guard renameRow >= 0 else { return false }
+        guard renameRow >= 0 || renameIconEntry != nil else { return false }
         if sel == #selector(NSResponder.cancelOperation(_:)) {
             // Escape – cancel rename, restore original name
-            let entry = outlineView.item(atRow: renameRow) as? FileEntry
+            let entry = inlineRenameEntry
             guard let tf = control as? NSTextField else { return false }
             tf.stringValue = entry?.name ?? ""
             tf.isEditable = false
             tf.isSelectable = false
+            let wasIconRename = renameIconEntry != nil
             renameRow = -1
-            view.window?.makeFirstResponder(outlineView)
+            renameIconEntry = nil
+            view.window?.makeFirstResponder(wasIconRename ? collectionView : outlineView)
             return true
         }
         return false
     }
 
     func controlTextDidEndEditing(_ note: Notification) {
-        guard renameRow >= 0, let tf = note.object as? NSTextField else { return }
+        guard renameRow >= 0 || renameIconEntry != nil,
+              let tf = note.object as? NSTextField else { return }
         let newName = tf.stringValue
         tf.isEditable = false
         tf.isSelectable = false
-        let entry = outlineView.item(atRow: renameRow) as? FileEntry
+        let entry = inlineRenameEntry
         renameRow = -1
+        renameIconEntry = nil
         guard let entry, !newName.isEmpty, newName != entry.name else { return }
         let newPath = ((entry.path as NSString).deletingLastPathComponent as NSString)
             .appendingPathComponent(newName)

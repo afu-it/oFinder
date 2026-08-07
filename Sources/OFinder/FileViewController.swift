@@ -80,6 +80,8 @@ final class FileViewController: NSViewController {
     // Model
     var entries: [FileEntry] = []
     var renameRow = -1
+    /// Inline rename in the icon grid, where there is no outline row to track.
+    var renameIconEntry: FileEntry?
 
     // Sort — the column the user last picked persists as the default. Recents
     // keeps its own preference (Date Modified, newest first, out of the box);
@@ -335,7 +337,7 @@ final class FileViewController: NSViewController {
     }
 
     override func keyDown(with event: NSEvent) {
-        if renameRow >= 0 { return } // let the rename field handle all keys
+        if renameRow >= 0 || renameIconEntry != nil { return } // rename field owns the keys
         let cmd = event.modifierFlags.contains(.command)
         // Finder behavior: ⏎ renames, ⌘↓ / ⌘O opens.
         if event.specialKey == .carriageReturn, !cmd {
